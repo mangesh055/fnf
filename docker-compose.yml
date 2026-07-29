@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./services/gateway/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - GATEWAY_PORT=5000
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - PROPERTY_SERVICE_URL=http://property-service:5002
+      - VISIT_SERVICE_URL=http://visit-service:5003
+      - COMMUNITY_SERVICE_URL=http://community-service:5004
+    depends_on:
+      - auth-service
+      - property-service
+      - visit-service
+      - community-service
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./services/auth-service/Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - AUTH_SERVICE_PORT=5001
+      - JWT_SECRET=campusnest-microservices-secret-key
+
+  property-service:
+    build:
+      context: .
+      dockerfile: ./services/property-service/Dockerfile
+    ports:
+      - "5002:5002"
+    environment:
+      - PROPERTY_SERVICE_PORT=5002
+
+  visit-service:
+    build:
+      context: .
+      dockerfile: ./services/visit-service/Dockerfile
+    ports:
+      - "5003:5003"
+    environment:
+      - VISIT_SERVICE_PORT=5003
+
+  community-service:
+    build:
+      context: .
+      dockerfile: ./services/community-service/Dockerfile
+    ports:
+      - "5004:5004"
+    environment:
+      - COMMUNITY_SERVICE_PORT=5004

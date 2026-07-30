@@ -51,6 +51,7 @@ export default function PropertiesPage() {
     return initial
   })
   const [availableOnly, setAvailableOnly] = useState(false)
+  const [noBrokerageOnly, setNoBrokerageOnly] = useState(false)
 
   const { properties, loadProperties } = usePropertyStore()
   const { initialized } = useAuthStore()
@@ -135,6 +136,7 @@ export default function PropertiesPage() {
     if (minRent) result = result.filter(p => p.rent >= Number(minRent))
     if (maxRent) result = result.filter(p => p.rent <= Number(maxRent))
     if (availableOnly) result = result.filter(p => p.availability)
+    if (noBrokerageOnly) result = result.filter(p => !p.brokerage_applied)
     Object.entries(amenityFilters).forEach(([key, val]) => {
       if (val) result = result.filter(p => {
         const rawAm = p.amenities
@@ -146,9 +148,9 @@ export default function PropertiesPage() {
     else if (sortBy === 'rent_high') result.sort((a, b) => b.rent - a.rent)
     else if (sortBy === 'rating') result.sort((a, b) => b.rating - a.rating)
     return result
-  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, properties])
+  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, noBrokerageOnly, properties])
 
-  const activeFilters = [selectedType, gender, minRent, maxRent, availableOnly, city].filter(Boolean).length + Object.values(amenityFilters).filter(Boolean).length
+  const activeFilters = [selectedType, gender, minRent, maxRent, availableOnly, noBrokerageOnly, city].filter(Boolean).length + Object.values(amenityFilters).filter(Boolean).length
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-20">
@@ -211,10 +213,14 @@ export default function PropertiesPage() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-end">
+                <div className="flex items-end gap-4 flex-wrap">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={availableOnly} onChange={e => setAvailableOnly(e.target.checked)} className="w-4 h-4 accent-brand-500" />
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Available only</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={noBrokerageOnly} onChange={e => setNoBrokerageOnly(e.target.checked)} className="w-4 h-4 accent-brand-500" />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">No Brokerage only</span>
                   </label>
                 </div>
               </div>
@@ -264,7 +270,7 @@ export default function PropertiesPage() {
             <div className="text-6xl mb-4">🏠</div>
             <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">No properties found</h3>
             <p className="text-slate-500 mb-6">Try adjusting your filters</p>
-            <button onClick={() => { setSearch(''); setSelectedType(''); setGender(''); setMinRent(''); setMaxRent(''); setCity(''); setAmenityFilters({}) }} className="btn-primary">Clear Filters</button>
+            <button onClick={() => { setSearch(''); setSelectedType(''); setGender(''); setMinRent(''); setMaxRent(''); setCity(''); setAmenityFilters({}); setAvailableOnly(false); setNoBrokerageOnly(false); }} className="btn-primary">Clear Filters</button>
           </div>
         ) : (
           <div className={cn('grid gap-6', viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-3xl')}>

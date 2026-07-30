@@ -267,6 +267,12 @@ export default function Navbar({ darkMode, toggleDarkMode }: NavbarProps) {
                             </Link>
                           )}
 
+                          {profile.role === 'property_owner' && (
+                            <Link to="/dashboard/owner/add-property" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm text-slate-700 dark:text-slate-300 transition-colors">
+                              <Building2 className="w-4 h-4 text-brand-500" /> Add Property
+                            </Link>
+                          )}
+
                           <Link to="/dashboard/settings" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm text-slate-700 dark:text-slate-300 transition-colors">
                             <User className="w-4 h-4 text-brand-500" /> Profile
                           </Link>

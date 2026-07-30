@@ -131,7 +131,8 @@ class MockSupabaseQuery {
       mess_payment_settings: '/messes/payment-settings',
       mess_transactions: '/messes/transactions',
       student_attendance: '/messes/attendance',
-      messes: '/messes'
+      messes: '/messes',
+      platform_feedback: '/community/feedback'
     };
 
     if (tableMapping[this.tableName]) {

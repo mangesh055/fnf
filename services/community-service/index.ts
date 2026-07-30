@@ -1,10 +1,12 @@
 import express, { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from '../shared/db';
 import Post from './Post';
 import Roommate from './Roommate';
 import User from '../auth-service/User';
+import Feedback from './Feedback';
 
 dotenv.config();
 
@@ -22,19 +24,43 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ service: 'community-service', status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+async function getAuthorDetails(authorId: string) {
+  if (!authorId) return null;
+  try {
+    const db = mongoose.connection.db;
+    if (!db) return null;
+    const userCol = db.collection('users');
+    let query: any = { _id: authorId };
+    if (mongoose.Types.ObjectId.isValid(authorId)) {
+      query = { _id: new mongoose.Types.ObjectId(authorId) };
+    }
+    const u = await userCol.findOne(query);
+    if (u) {
+      return {
+        full_name: u.full_name || '',
+        email: u.email || '',
+        phone: u.phone || ''
+      };
+    }
+  } catch (err) {
+    console.error('[getAuthorDetails Error]:', err);
+  }
+  return null;
+}
+
 // Community / Marketplace Posts endpoints
 app.get('/api/community/posts', async (req: Request, res: Response) => {
   try {
     const posts = await Post.find().sort({ created_at: -1 });
     const populated = await Promise.all(posts.map(async (p) => {
       const obj = p.toObject();
-      if (!obj.full_name || obj.full_name === '') {
-        const u = await User.findById(obj.author_id);
-        if (u) {
-          obj.full_name = u.full_name;
-          obj.email = u.email;
-          obj.phone = u.phone;
-        }
+      const author = await getAuthorDetails(obj.author_id);
+      if (author) {
+        obj.full_name = author.full_name;
+        obj.email = author.email;
+        obj.phone = author.phone;
+      } else {
+        obj.full_name = 'Campus Student';
       }
       return obj;
     }));
@@ -53,13 +79,13 @@ app.get('/api/community/posts/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Post not found' });
     }
     const obj = post.toObject();
-    if (!obj.full_name || obj.full_name === '') {
-      const u = await User.findById(obj.author_id);
-      if (u) {
-        obj.full_name = u.full_name;
-        obj.email = u.email;
-        obj.phone = u.phone;
-      }
+    const author = await getAuthorDetails(obj.author_id);
+    if (author) {
+      obj.full_name = author.full_name;
+      obj.email = author.email;
+      obj.phone = author.phone;
+    } else {
+      obj.full_name = 'Campus Student';
     }
     res.json({ success: true, data: obj });
   } catch (error: any) {
@@ -224,6 +250,35 @@ app.delete('/api/community/roommates/:id', async (req: Request, res: Response) =
   }
 });
 
+// Feedback Endpoints
+app.get('/api/community/feedback', async (req: Request, res: Response) => {
+  try {
+    const feedbacks = await Feedback.find().sort({ created_at: -1 });
+    res.json({ success: true, data: feedbacks });
+  } catch (error: any) {
+    console.error('[Get Feedback Error]:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to retrieve feedback' });
+  }
+});
+
+app.post('/api/community/feedback', async (req: Request, res: Response) => {
+  try {
+    const payload = Array.isArray(req.body) ? req.body[0] : req.body;
+    const feedbackData = {
+      id: payload.id || 'fb_' + Date.now() + Math.random().toString(36).substring(2, 7),
+      ...payload
+    };
+    
+    const newFeedback = new Feedback(feedbackData);
+    await newFeedback.save();
+    
+    res.status(201).json({ success: true, data: newFeedback });
+  } catch (error: any) {
+    console.error('[Create Feedback Error]:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to submit feedback' });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`[Community Service] Running on port ${PORT}`);
+  console.log(`[Community Service] Running on port ${PORT} - Feedback Enabled v2`);
 });

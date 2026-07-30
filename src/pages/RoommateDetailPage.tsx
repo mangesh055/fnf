@@ -231,9 +231,7 @@ export default function RoommateDetailPage() {
                     <span className="font-bold text-slate-900 dark:text-white text-sm">4.9</span>
                     <span className="text-slate-400 text-xs">(Top Match)</span>
                   </div>
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5">
-                    No Brokerage Fee
-                  </span>
+                
                 </div>
               </div>
 

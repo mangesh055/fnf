@@ -33,6 +33,8 @@ export interface IProperty extends Document {
   flat_config?: Record<string, any>;
   hostel_config?: Record<string, any>;
   pg_config?: Record<string, any>;
+  brokerage_applied?: boolean;
+  brokerage_amount?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -71,6 +73,8 @@ const PropertySchema: Schema = new Schema(
     flat_config: { type: Schema.Types.Mixed, default: {} },
     hostel_config: { type: Schema.Types.Mixed, default: {} },
     pg_config: { type: Schema.Types.Mixed, default: {} },
+    brokerage_applied: { type: Boolean, default: false },
+    brokerage_amount: { type: Number, default: 0 },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

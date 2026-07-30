@@ -11,6 +11,8 @@ import { fetchMesses, fetchProperties } from '../lib/platformData'
 import { cn } from '../lib/utils'
 import { supabase } from '../lib/supabase'
 import { gatewayFetch } from '../lib/apiGateway'
+import { useAuthStore } from '../store/authStore'
+
 const cities = ['Pune', 'Mumbai', 'Bangalore', 'Delhi', 'Hyderabad', 'Chennai', 'Kolkata', 'Ahmedabad']
 
 export default function HomePage() {
@@ -22,6 +24,70 @@ export default function HomePage() {
   const [dynamicStats, setDynamicStats] = useState({ properties: '0+', messes: '0+', students: '0+' })
   const navigate = useNavigate()
   const scrollTimerRef = useRef<any>(null)
+
+  const { user, profile } = useAuthStore()
+  const [feedbackRating, setFeedbackRating] = useState(5)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackCategory, setFeedbackCategory] = useState('general')
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [feedbackError, setFeedbackError] = useState('')
+
+  const [avgRating, setAvgRating] = useState(4.8)
+  const [happyUsersCount, setHappyUsersCount] = useState(5000)
+
+  const loadFeedbackStats = async () => {
+    try {
+      const { data: fbData } = await supabase.from('platform_feedback').select('rating')
+      if (fbData && fbData.length > 0) {
+        const sum = fbData.reduce((acc: number, curr: any) => acc + (curr.rating || 0), 0)
+        setAvgRating(Number((sum / fbData.length).toFixed(1)))
+        const positiveFeedbackCount = fbData.filter((f: any) => f.rating >= 4).length
+        setHappyUsersCount(5000 + positiveFeedbackCount)
+      }
+    } catch (err) {
+      console.warn('Failed to load dynamic rating stats:', err)
+    }
+  }
+
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !profile) {
+      setFeedbackError('Please log in to submit feedback')
+      return
+    }
+
+    setSubmittingFeedback(true)
+    setFeedbackError('')
+
+    try {
+      const { error: submitError } = await supabase.from('platform_feedback').insert([
+        {
+          user_id: user.id,
+          rating: feedbackRating,
+          feedback_text: feedbackText || null,
+          category: feedbackCategory,
+          full_name: profile.full_name || user.email?.split('@')[0] || 'Anonymous'
+        },
+      ])
+
+      if (submitError) throw submitError
+
+      setFeedbackSubmitted(true)
+      setFeedbackRating(5)
+      setFeedbackText('')
+      setFeedbackCategory('general')
+      await loadFeedbackStats()
+      
+      setTimeout(() => {
+        setFeedbackSubmitted(false)
+      }, 4000)
+    } catch (err: any) {
+      setFeedbackError(err.message || 'Failed to submit feedback')
+    } finally {
+      setSubmittingFeedback(false)
+    }
+  }
 
   const handleTabChange = (tab: 'property' | 'mess') => {
     setSearchTab(tab)
@@ -63,6 +129,8 @@ export default function HomePage() {
           messes: `${messesCount}+`,
           students: `${studentsCount}+`
         })
+        
+        await loadFeedbackStats()
       } catch (error) {
         console.error('Failed to load homepage data from Supabase:', error)
       }
@@ -480,6 +548,104 @@ export default function HomePage() {
           </section>
         </>
       )}
+
+      {/* Small Feedback Section */}
+      <section className="py-12 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white mb-3">
+                💭 Share Your Experience
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6">
+                Your feedback directly shapes the future of FlatsNFood. Whether you found a bug, want to request a feature, or simply want to rate your experience, we would love to hear from you!
+              </p>
+              <div className="flex gap-4 items-center">
+                <div className="p-4 bg-brand-50 dark:bg-brand-950/20 rounded-2xl border border-brand-100 dark:border-brand-900/40">
+                  <p className="text-2xl font-black text-brand-600 dark:text-brand-400">{avgRating}★</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Average User Rating</p>
+                </div>
+                <div className="p-4 bg-brand-50 dark:bg-brand-950/20 rounded-2xl border border-brand-100 dark:border-brand-900/40">
+                  <p className="text-2xl font-black text-brand-600 dark:text-brand-400">{happyUsersCount}+</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Happy Users</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/30 p-5 sm:p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              {feedbackSubmitted ? (
+                <div className="text-center py-8 space-y-3">
+                  <div className="text-4xl text-emerald-500">🎉</div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-lg">Thank You!</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Your feedback has been submitted successfully.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitFeedback} className="space-y-4">
+                  {feedbackError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs rounded-xl font-semibold">
+                      {feedbackError}
+                    </div>
+                  )}
+
+                  {/* Rating Stars */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Rate Us</label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setFeedbackRating(star)}
+                          className={`transition-all ${star <= feedbackRating ? 'text-amber-400 scale-110' : 'text-slate-300 dark:text-slate-600'} hover:scale-125 cursor-pointer`}
+                        >
+                          <Star className="w-5 h-5 fill-current" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Category Selection */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Feedback Type</label>
+                    <select
+                      value={feedbackCategory}
+                      onChange={(e) => setFeedbackCategory(e.target.value)}
+                      className="input-field py-1.5 text-xs font-semibold"
+                    >
+                      <option value="general">💭 General Feedback</option>
+                      <option value="feature_request">✨ Feature Request</option>
+                      <option value="bug_report">🐛 Bug Report</option>
+                      <option value="improvement">⚡ Improvement Suggestion</option>
+                    </select>
+                  </div>
+
+                  {/* Suggestion Text */}
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Message / Suggestion</label>
+                    <textarea
+                      rows={3}
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
+                      placeholder="Tell us what you think..."
+                      className="input-field py-2 text-xs font-semibold"
+                      required
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={submittingFeedback}
+                    className="w-full btn-primary py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
       <section className="py-10 sm:py-20 bg-gradient-to-br from-brand-600 to-brand-800">

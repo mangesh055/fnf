@@ -14,6 +14,9 @@ export interface IPost extends Document {
   rejected?: boolean;
   created_at: Date;
   updated_at: Date;
+  full_name?: string;
+  email?: string;
+  phone?: string;
 }
 
 const PostSchema: Schema = new Schema(
@@ -28,7 +31,10 @@ const PostSchema: Schema = new Schema(
     likes: { type: Number, default: 0 },
     comment_count: { type: Number, default: 0 },
     verified: { type: Boolean, default: false },
-    rejected: { type: Boolean, default: false }
+    rejected: { type: Boolean, default: false },
+    full_name: { type: String },
+    email: { type: String },
+    phone: { type: String }
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

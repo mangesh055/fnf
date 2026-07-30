@@ -300,7 +300,7 @@ export default function PropertyDetailPage() {
 
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">{property.description}</p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 mb-6">
                 <div className="min-w-0">
                   <p className="text-xs text-slate-500 mb-1 whitespace-nowrap truncate">
                     {(property.property_type === 'pg' || property.property_type === 'hostel') && property.sharing_configs?.length
@@ -323,6 +323,12 @@ export default function PropertyDetailPage() {
                 <div className="min-w-0">
                   <p className="text-xs text-slate-500 mb-1 whitespace-nowrap truncate">Security Deposit</p>
                   <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white whitespace-nowrap truncate">{formatCurrency(property.deposit)}</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500 mb-1 whitespace-nowrap truncate">Brokerage</p>
+                  <p className={cn("text-xs sm:text-base md:text-lg font-bold whitespace-nowrap truncate", property.brokerage_applied ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400")}>
+                    {property.brokerage_applied ? formatCurrency(property.brokerage_amount || 0) : 'No Brokerage'}
+                  </p>
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-slate-500 mb-1 whitespace-nowrap truncate">

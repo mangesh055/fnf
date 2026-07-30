@@ -35,6 +35,7 @@ const adminLinks = [
   { label: 'Roommates', path: '/dashboard/admin/roommates', icon: Users },
   { label: 'Marketplace Posts', path: '/dashboard/admin/community', icon: ShoppingBag },
   { label: 'Analytics', path: '/dashboard/admin/analytics', icon: BarChart2 },
+  { label: 'Feedback', path: '/dashboard/admin/feedback', icon: MessageCircle },
   { label: 'Profile', path: '/dashboard/settings', icon: User },
 ]
 
@@ -63,10 +64,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Logo */}
       <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
-          <img 
-            src={logoImg} 
-            alt="FlatsNFood Logo" 
-            className="w-9 h-9 object-contain rounded-xl" 
+          <img
+            src={logoImg}
+            alt="FlatsNFood Logo"
+            className="w-9 h-9 object-contain rounded-xl"
           />
           <span className="text-lg font-display font-bold">
             <span className="text-slate-900 dark:text-white">Flats</span>

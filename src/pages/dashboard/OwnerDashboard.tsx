@@ -50,6 +50,8 @@ export default function OwnerDashboard() {
     available_rooms: '5',
     images: [] as string[],
     video_url: '',
+    brokerage_applied: false,
+    brokerage_amount: '',
     amenities: {
       wifi: true,
       ac: false,
@@ -330,6 +332,8 @@ export default function OwnerDashboard() {
       available_rooms: property.available_rooms?.toString() || '5',
       images: property.images || [],
       video_url: property.video_url || '',
+      brokerage_applied: property.brokerage_applied || false,
+      brokerage_amount: property.brokerage_amount?.toString() || '',
       amenities: {
         wifi: existing.wifi !== undefined ? !!existing.wifi : true,
         ac: !!existing.ac,
@@ -349,9 +353,9 @@ export default function OwnerDashboard() {
       property.sharing_configs && property.sharing_configs.length > 0
         ? property.sharing_configs
         : [
-            { sharing_type: '1_sharing', rent: property.rent || 8000, deposit: property.deposit || 16000, available_beds: 2, total_beds: 4, attached_bathroom: !!existing.attached_bathroom, ac: !!existing.ac },
-            { sharing_type: '2_sharing', rent: Math.round((property.rent || 8000) * 0.8), deposit: Math.round((property.deposit || 16000) * 0.8), available_beds: 4, total_beds: 8, attached_bathroom: !!existing.attached_bathroom, ac: !!existing.ac },
-          ]
+          { sharing_type: '1_sharing', rent: property.rent || 8000, deposit: property.deposit || 16000, available_beds: 2, total_beds: 4, attached_bathroom: !!existing.attached_bathroom, ac: !!existing.ac },
+          { sharing_type: '2_sharing', rent: Math.round((property.rent || 8000) * 0.8), deposit: Math.round((property.deposit || 16000) * 0.8), available_beds: 4, total_beds: 8, attached_bathroom: !!existing.attached_bathroom, ac: !!existing.ac },
+        ]
     )
     setFlatConfig(
       property.flat_config || {
@@ -445,6 +449,8 @@ export default function OwnerDashboard() {
       flat_config: flatConfig,
       hostel_config: { ...hostelConfig, category_configs: sharingConfigs },
       pg_config: { ...pgConfig, sharing_configs: sharingConfigs },
+      brokerage_applied: formData.brokerage_applied || false,
+      brokerage_amount: formData.brokerage_applied ? (Number(formData.brokerage_amount) || 0) : 0,
     }
 
     let result
@@ -489,6 +495,8 @@ export default function OwnerDashboard() {
       available_rooms: '5',
       images: [] as string[],
       video_url: '',
+      brokerage_applied: false,
+      brokerage_amount: '',
       amenities: {
         wifi: true,
         ac: false,
@@ -517,8 +525,8 @@ export default function OwnerDashboard() {
             {isVisitsTab
               ? 'Accept or manage free tour visit requests submitted by students'
               : isListingsTab
-              ? 'Manage, edit, or add rental listings for your PGs, hostels, or apartments'
-              : 'Real-time performance analytics, occupancy statistics, and quick actions'}
+                ? 'Manage, edit, or add rental listings for your PGs, hostels, or apartments'
+                : 'Real-time performance analytics, occupancy statistics, and quick actions'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -532,7 +540,7 @@ export default function OwnerDashboard() {
       {isOverviewTab && (
         <div className="space-y-6">
           {/* Key Performance Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* 1. Active Listings Card */}
             <div className="card-interactive p-5 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between group">
               <div>
@@ -575,19 +583,6 @@ export default function OwnerDashboard() {
               </div>
             </div>
 
-            {/* 4. Monthly Revenue Estimate */}
-            <div className="card-interactive p-5 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between group">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Est. Monthly Revenue</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(estimatedMonthlyRevenue)}</h3>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
-                  Zero Brokerage Fees
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                <DollarSign className="w-6 h-6" />
-              </div>
-            </div>
           </div>
 
           {/* Quick Navigation Cards & Banners */}
@@ -640,12 +635,6 @@ export default function OwnerDashboard() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => { setEditingId(null); setIsModalOpen(true); }}
-                  className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-brand-500 text-white hover:bg-brand-600 transition-all text-xs font-bold flex items-center gap-1 shadow-sm shrink-0"
-                >
-                  <Plus className="w-4 h-4" /> Add
-                </button>
               </div>
 
               <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-brand-200/60 dark:border-brand-900/40">
@@ -777,13 +766,12 @@ export default function OwnerDashboard() {
                 return (
                   <div
                     key={visit.id}
-                    className={`p-4 rounded-2xl border transition-all space-y-3 flex flex-col justify-between ${
-                      isPending
+                    className={`p-4 rounded-2xl border transition-all space-y-3 flex flex-col justify-between ${isPending
                         ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 shadow-sm'
                         : isAccepted
-                        ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50'
-                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-75'
-                    }`}
+                          ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50'
+                          : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-75'
+                      }`}
                   >
                     <div>
                       {/* Header Info */}
@@ -797,13 +785,12 @@ export default function OwnerDashboard() {
                           </p>
                         </div>
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
-                            isPending
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${isPending
                               ? 'bg-amber-500 text-white shadow-sm'
                               : isAccepted
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-red-500 text-white'
-                          }`}
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-red-500 text-white'
+                            }`}
                         >
                           {isPending ? '⏳ Pending' : isAccepted ? '✓ Accepted' : '✗ Declined'}
                         </span>
@@ -911,9 +898,6 @@ export default function OwnerDashboard() {
               <h3 className="font-display font-bold text-2xl text-slate-900 dark:text-white">Active Properties</h3>
               <p className="text-sm text-slate-500">Total: {displayProperties.length} active listings</p>
             </div>
-            <button onClick={() => { setEditingId(null); setIsModalOpen(true); }} className="btn-primary w-full sm:w-auto text-sm py-2 flex justify-center items-center gap-1.5">
-              <Plus className="w-4 h-4" /> Add Property
-            </button>
           </div>
 
           {displayProperties.length === 0 ? (
@@ -1181,66 +1165,66 @@ export default function OwnerDashboard() {
                                       <div>
                                         <label className="text-[10px] text-slate-500 font-medium">Rent (₹/head)</label>
                                         <input
-                                           type="text"
-                                           inputMode="numeric"
-                                           value={config.rent === 0 ? '' : config.rent}
-                                           placeholder="0"
-                                           onFocus={(e) => e.target.select()}
-                                           onChange={(e) => {
-                                             const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                             const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                             setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, rent: val } : c))
-                                           }}
-                                           className="input-field py-1 text-xs font-semibold"
-                                         />
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={config.rent === 0 ? '' : config.rent}
+                                          placeholder="0"
+                                          onFocus={(e) => e.target.select()}
+                                          onChange={(e) => {
+                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, rent: val } : c))
+                                          }}
+                                          className="input-field py-1 text-xs font-semibold"
+                                        />
                                       </div>
                                       <div>
                                         <label className="text-[10px] text-slate-500 font-medium">Deposit (₹/head)</label>
                                         <input
-                                           type="text"
-                                           inputMode="numeric"
-                                           value={config.deposit === 0 ? '' : config.deposit}
-                                           placeholder="0"
-                                           onFocus={(e) => e.target.select()}
-                                           onChange={(e) => {
-                                             const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                             const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                             setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, deposit: val } : c))
-                                           }}
-                                           className="input-field py-1 text-xs font-semibold"
-                                         />
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={config.deposit === 0 ? '' : config.deposit}
+                                          placeholder="0"
+                                          onFocus={(e) => e.target.select()}
+                                          onChange={(e) => {
+                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, deposit: val } : c))
+                                          }}
+                                          className="input-field py-1 text-xs font-semibold"
+                                        />
                                       </div>
                                       <div>
                                         <label className="text-[10px] text-slate-500 font-medium">Avail. Beds</label>
                                         <input
-                                           type="text"
-                                           inputMode="numeric"
-                                           value={config.available_beds === 0 ? '' : config.available_beds}
-                                           placeholder="0"
-                                           onFocus={(e) => e.target.select()}
-                                           onChange={(e) => {
-                                             const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                             const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                             setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, available_beds: val } : c))
-                                           }}
-                                           className="input-field py-1 text-xs font-semibold"
-                                         />
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={config.available_beds === 0 ? '' : config.available_beds}
+                                          placeholder="0"
+                                          onFocus={(e) => e.target.select()}
+                                          onChange={(e) => {
+                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, available_beds: val } : c))
+                                          }}
+                                          className="input-field py-1 text-xs font-semibold"
+                                        />
                                       </div>
                                       <div>
                                         <label className="text-[10px] text-slate-500 font-medium">Total Beds</label>
                                         <input
-                                           type="text"
-                                           inputMode="numeric"
-                                           value={config.total_beds === 0 ? '' : config.total_beds}
-                                           placeholder="0"
-                                           onFocus={(e) => e.target.select()}
-                                           onChange={(e) => {
-                                             const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                             const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                             setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, total_beds: val } : c))
-                                           }}
-                                           className="input-field py-1 text-xs font-semibold"
-                                         />
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={config.total_beds === 0 ? '' : config.total_beds}
+                                          placeholder="0"
+                                          onFocus={(e) => e.target.select()}
+                                          onChange={(e) => {
+                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, total_beds: val } : c))
+                                          }}
+                                          className="input-field py-1 text-xs font-semibold"
+                                        />
                                       </div>
                                     </div>
 
@@ -1462,85 +1446,85 @@ export default function OwnerDashboard() {
                                       </div>
                                     </div>
 
-                                     {/* Tier-specific Amenity Toggles */}
-                                     <div className="flex flex-wrap gap-2 text-[10px] pt-1">
-                                       <button
-                                         type="button"
-                                         onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, attached_bathroom: !c.attached_bathroom } : c))}
-                                         className={`px-2.5 py-1 rounded-full border transition-all ${config.attached_bathroom ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
-                                       >
-                                         🚿 Attached Bath
-                                       </button>
-                                       <button
-                                         type="button"
-                                         onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, ac: !c.ac } : c))}
-                                         className={`px-2.5 py-1 rounded-full border transition-all ${config.ac ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
-                                       >
-                                         ❄️ AC Room
-                                       </button>
-                                       <button
-                                         type="button"
-                                         onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, balcony: !c.balcony } : c))}
-                                         className={`px-2.5 py-1 rounded-full border transition-all ${config.balcony ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
-                                       >
-                                         🌅 Private Balcony
-                                       </button>
-                                       <button
-                                         type="button"
-                                         onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, study_desk: !c.study_desk } : c))}
-                                         className={`px-2.5 py-1 rounded-full border transition-all ${config.study_desk ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
-                                       >
-                                         📚 Dedicated Study Desk
-                                       </button>
-                                       <button
-                                         type="button"
-                                         onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, personal_wardrobe: !c.personal_wardrobe } : c))}
-                                         className={`px-2.5 py-1 rounded-full border transition-all ${config.personal_wardrobe ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
-                                       >
-                                         🚪 Personal Wardrobe
-                                       </button>
-                                     </div>
+                                    {/* Tier-specific Amenity Toggles */}
+                                    <div className="flex flex-wrap gap-2 text-[10px] pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, attached_bathroom: !c.attached_bathroom } : c))}
+                                        className={`px-2.5 py-1 rounded-full border transition-all ${config.attached_bathroom ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                      >
+                                        🚿 Attached Bath
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, ac: !c.ac } : c))}
+                                        className={`px-2.5 py-1 rounded-full border transition-all ${config.ac ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                      >
+                                        ❄️ AC Room
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, balcony: !c.balcony } : c))}
+                                        className={`px-2.5 py-1 rounded-full border transition-all ${config.balcony ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                      >
+                                        🌅 Private Balcony
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, study_desk: !c.study_desk } : c))}
+                                        className={`px-2.5 py-1 rounded-full border transition-all ${config.study_desk ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                      >
+                                        📚 Dedicated Study Desk
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, personal_wardrobe: !c.personal_wardrobe } : c))}
+                                        className={`px-2.5 py-1 rounded-full border transition-all ${config.personal_wardrobe ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                      >
+                                        🚪 Personal Wardrobe
+                                      </button>
+                                    </div>
 
-                                     {/* Tier-Specific Photos Upload */}
-                                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                                       <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                                         📸 {label} Room Photos
-                                       </label>
-                                       {(config.images && config.images.length > 0) && (
-                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                           {config.images.map((img, i) => (
-                                             <div key={i} className="relative aspect-video rounded-lg overflow-hidden group border border-slate-200 dark:border-slate-700">
-                                               <img src={img} alt={`${label} Preview ${i}`} className="w-full h-full object-cover" />
-                                               <button
-                                                 type="button"
-                                                 onClick={() => removeTierImage(type, i)}
-                                                 className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                               >
-                                                 <X className="w-3 h-3" />
-                                               </button>
-                                             </div>
-                                           ))}
-                                         </div>
-                                       )}
-                                       <div className="flex gap-2">
-                                         <label className={`flex-1 cursor-pointer bg-purple-50/50 hover:bg-purple-100/50 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-2 flex flex-col items-center justify-center transition-colors ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
-                                           <Plus className="w-4 h-4 text-purple-500 mb-0.5" />
-                                           <span className="text-[10px] text-purple-700 dark:text-purple-300 font-medium">{isUploading ? 'Uploading...' : 'Upload Room Photos'}</span>
-                                           <input type="file" multiple accept="image/*" onChange={(e) => handleTierFileUpload(e, type)} disabled={isUploading} className="hidden" />
-                                         </label>
-                                         <label className={`flex-1 cursor-pointer bg-purple-50/50 hover:bg-purple-100/50 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-2 flex flex-col items-center justify-center transition-colors ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
-                                           <Camera className="w-4 h-4 text-purple-500 mb-0.5" />
-                                           <span className="text-[10px] text-purple-700 dark:text-purple-300 font-medium">Camera</span>
-                                           <input type="file" accept="image/*" capture="environment" onChange={(e) => handleTierFileUpload(e, type)} disabled={isUploading} className="hidden" />
-                                         </label>
-                                       </div>
-                                     </div>
-                                   </div>
-                                 )}
-                               </div>
-                             )
-                           })}
-                         </div>
+                                    {/* Tier-Specific Photos Upload */}
+                                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                        📸 {label} Room Photos
+                                      </label>
+                                      {(config.images && config.images.length > 0) && (
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                          {config.images.map((img, i) => (
+                                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden group border border-slate-200 dark:border-slate-700">
+                                              <img src={img} alt={`${label} Preview ${i}`} className="w-full h-full object-cover" />
+                                              <button
+                                                type="button"
+                                                onClick={() => removeTierImage(type, i)}
+                                                className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                              >
+                                                <X className="w-3 h-3" />
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      <div className="flex gap-2">
+                                        <label className={`flex-1 cursor-pointer bg-purple-50/50 hover:bg-purple-100/50 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-2 flex flex-col items-center justify-center transition-colors ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
+                                          <Plus className="w-4 h-4 text-purple-500 mb-0.5" />
+                                          <span className="text-[10px] text-purple-700 dark:text-purple-300 font-medium">{isUploading ? 'Uploading...' : 'Upload Room Photos'}</span>
+                                          <input type="file" multiple accept="image/*" onChange={(e) => handleTierFileUpload(e, type)} disabled={isUploading} className="hidden" />
+                                        </label>
+                                        <label className={`flex-1 cursor-pointer bg-purple-50/50 hover:bg-purple-100/50 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-2 flex flex-col items-center justify-center transition-colors ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
+                                          <Camera className="w-4 h-4 text-purple-500 mb-0.5" />
+                                          <span className="text-[10px] text-purple-700 dark:text-purple-300 font-medium">Camera</span>
+                                          <input type="file" accept="image/*" capture="environment" onChange={(e) => handleTierFileUpload(e, type)} disabled={isUploading} className="hidden" />
+                                        </label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
 
                         {/* Hostel Warden & Curfew */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-200 dark:border-purple-800/60">
@@ -1702,6 +1686,42 @@ export default function OwnerDashboard() {
                         </div>
                       </div>
                     )}
+                    {/* Brokerage Settings */}
+                    <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-800 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            name="brokerage_applied"
+                            checked={!!formData.brokerage_applied}
+                            onChange={(e) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                brokerage_applied: e.target.checked
+                              }))
+                            }}
+                            className="w-4 h-4 text-purple-600 rounded"
+                          />
+                          <span>Brokerage Applied?</span>
+                        </label>
+                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">Commission / Brokerage Fee</span>
+                      </div>
+
+                      {formData.brokerage_applied && (
+                        <div className="pt-2 border-t border-purple-100 dark:border-purple-900/40">
+                          <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">Brokerage Amount (₹) *</label>
+                          <input
+                            type="number"
+                            name="brokerage_amount"
+                            required={formData.brokerage_applied}
+                            value={formData.brokerage_amount === '0' ? '' : formData.brokerage_amount}
+                            onChange={handleInputChange}
+                            placeholder="e.g. 5000"
+                            className="input-field py-1.5 text-xs font-semibold"
+                          />
+                        </div>
+                      )}
+                    </div>
 
                     {/* Amenities Provided & Custom Amenity Input */}
                     <div>

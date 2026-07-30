@@ -117,7 +117,7 @@ export default function App() {
           {/* Public Routes wrapped in PublicLayout */}
           <Route element={<PublicLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode} />}>
             <Route path="/" element={<HomePage />} />
-            
+
             {/* Protected Platform Routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/properties" element={<PropertiesPage />} />
@@ -162,6 +162,7 @@ export default function App() {
               <Route path="owner" element={<OwnerDashboard />} />
               <Route path="owner/visits" element={<OwnerDashboard />} />
               <Route path="owner/listings" element={<OwnerDashboard />} />
+              <Route path="owner/add-property" element={<OwnerDashboard />} />
             </Route>
 
             {/* Mess Owner Routes */}
@@ -189,6 +190,7 @@ export default function App() {
               <Route path="admin/analytics" element={<AdminDashboard />} />
               <Route path="admin/roommates" element={<AdminDashboard />} />
               <Route path="admin/community" element={<AdminDashboard />} />
+              <Route path="admin/feedback" element={<AdminDashboard />} />
             </Route>
 
             {/* Shared Authenticated Routes */}

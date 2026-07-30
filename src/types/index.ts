@@ -121,6 +121,8 @@ export interface Property {
   pg_config?: PGConfig
   flat_details?: any
   hostel_details?: any
+  brokerage_applied?: boolean
+  brokerage_amount?: number
   created_at: string
   updated_at: string
   profiles?: Profile

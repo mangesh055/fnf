@@ -93,6 +93,15 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
                   ★ Featured
                 </span>
               )}
+              {property.brokerage_applied ? (
+                <span className="px-2.5 py-1 rounded-lg bg-purple-600 text-white text-[10px] font-extrabold shadow-sm">
+                  Brokerage: ₹{property.brokerage_amount}
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-extrabold shadow-sm">
+                  No Brokerage
+                </span>
+              )}
             </div>
 
             {/* Top Right Favorite Button */}

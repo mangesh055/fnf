@@ -3,7 +3,7 @@ import { Link, useLocation, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Building2, Utensils, TrendingUp, Shield, AlertTriangle, CheckCircle, XCircle, RefreshCw, Search } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { formatCurrency } from '../../lib/utils'
+import { formatCurrency, cn } from '../../lib/utils'
 import { supabase } from '../../lib/supabase'
 import { gatewayFetch } from '../../lib/apiGateway'
 import { useAuthStore } from '../../store/authStore'
@@ -46,6 +46,8 @@ export default function AdminDashboard() {
   const [loadingProps, setLoadingProps] = useState(false)
   const [loadingRoommates, setLoadingRoommates] = useState(false)
   const [loadingCommunity, setLoadingCommunity] = useState(false)
+  const [feedbacks, setFeedbacks] = useState<any[]>([])
+  const [loadingFeedback, setLoadingFeedback] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
   
@@ -81,6 +83,8 @@ export default function AdminDashboard() {
       fetchRoommates()
     } else if (currentTab === 'community') {
       fetchCommunity()
+    } else if (currentTab === 'feedback') {
+      fetchFeedback()
     } else if (currentTab === 'admin') {
       fetchOverview()
     } else if (currentTab === 'analytics') {
@@ -207,6 +211,34 @@ export default function AdminDashboard() {
       setCommunity([])
     } finally {
       setLoadingCommunity(false)
+    }
+  }
+
+  const fetchFeedback = async () => {
+    setLoadingFeedback(true)
+    setFetchError(null)
+    try {
+      const { data, error } = await supabase
+        .from('platform_feedback')
+        .select('*, profiles(full_name, email)')
+        .order('created_at', { ascending: false })
+      
+      if (!error && data) {
+        setFeedbacks(data)
+      } else {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('platform_feedback')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (fallbackError) throw fallbackError
+        setFeedbacks(fallbackData || [])
+      }
+    } catch (error: any) {
+      console.error('Failed to load feedback from Supabase:', error)
+      setFetchError(error.message || 'Failed to fetch feedback')
+    } finally {
+      setLoadingFeedback(false)
     }
   }
 
@@ -983,6 +1015,73 @@ export default function AdminDashboard() {
     </div>
   )
 
+  const renderFeedback = () => (
+    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="font-display font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+            💬 Platform Feedbacks & Suggestions
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Review user suggestions, experience ratings, and report logs
+          </p>
+        </div>
+        <button onClick={fetchFeedback} className="text-sm text-brand-500 hover:underline shrink-0">Refresh</button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500">
+              <th className="pb-3 font-medium">User</th>
+              <th className="pb-3 font-medium">Type</th>
+              <th className="pb-3 font-medium">Rating</th>
+              <th className="pb-3 font-medium">Feedback / Message</th>
+              <th className="pb-3 font-medium">Submitted At</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {loadingFeedback ? (
+              <tr><td colSpan={5} className="py-8 text-center text-slate-500">Loading feedbacks...</td></tr>
+            ) : feedbacks.length === 0 ? (
+              <tr><td colSpan={5} className="py-8 text-center text-slate-500">No feedback submitted yet.</td></tr>
+            ) : feedbacks.map(item => (
+              <tr key={item.id}>
+                <td className="py-4 font-semibold text-slate-900 dark:text-white">
+                  {item.profiles?.full_name || item.full_name || 'Anonymous User'}
+                </td>
+                <td className="py-4">
+                  <span className={cn(
+                    "badge text-[11px]",
+                    item.category === 'bug_report' ? "badge-red" :
+                    item.category === 'feature_request' ? "badge-purple" : "badge-green"
+                  )}>
+                    {item.category ? item.category.toUpperCase().replace('_', ' ') : 'GENERAL'}
+                  </span>
+                </td>
+                <td className="py-4 font-bold text-amber-500 flex items-center gap-1">
+                  ⭐ {item.rating || 'N/A'}
+                </td>
+                <td className="py-4 text-slate-600 dark:text-slate-350 max-w-md break-words whitespace-pre-wrap">
+                  {item.feedback_text || <span className="italic text-slate-400">Rating Only</span>}
+                </td>
+                <td className="py-4 text-slate-400 text-xs">
+                  {item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : 'N/A'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-end">
@@ -1004,6 +1103,7 @@ export default function AdminDashboard() {
       {currentTab === 'properties' && renderProperties()}
       {currentTab === 'roommates' && renderRoommates()}
       {currentTab === 'community' && renderCommunity()}
+      {currentTab === 'feedback' && renderFeedback()}
 
       {/* Manage User Modal */}
       <AnimatePresence>

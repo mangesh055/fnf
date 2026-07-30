@@ -50,6 +50,14 @@ app.post('/api/auth/google', async (req: Request, res: Response) => {
     if (user && user.status === 'suspended') {
       return res.status(403).json({ success: false, error: 'Your account has been suspended by the administrator.' });
     }
+    const isAdminEmail = email.trim().toLowerCase() === 'pujari.h.mangesh750@gmail.com';
+    if (user) {
+      if (isAdminEmail && (user.role !== 'admin' || !user.is_profile_completed)) {
+        user.role = 'admin';
+        user.is_profile_completed = true;
+        await user.save();
+      }
+    }
     if (!user) {
       if (flow === 'signin') {
         return res.status(400).json({ success: false, error: 'Account does not exist. Please sign up.' });
@@ -59,9 +67,9 @@ app.post('/api/auth/google', async (req: Request, res: Response) => {
         email: email.trim().toLowerCase(),
         full_name: name || 'Google User',
         avatar_url: picture || '',
-        role: role || 'student', // Initial role chosen by user
+        role: isAdminEmail ? 'admin' : (role || 'student'), // Initial role chosen by user
         phone: '',
-        is_profile_completed: false
+        is_profile_completed: isAdminEmail ? true : false
       });
       await user.save();
     }
@@ -83,7 +91,9 @@ app.post('/api/auth/google', async (req: Request, res: Response) => {
           full_name: user.full_name,
           avatar_url: user.avatar_url,
           role: user.role,
-          phone: user.phone
+          phone: user.phone,
+          gender: user.gender,
+          is_profile_completed: user.is_profile_completed
         }
       }
     });
@@ -109,12 +119,14 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const isAdminEmail = email.trim().toLowerCase() === 'pujari.h.mangesh750@gmail.com';
     const newUser = new User({
       email,
       password: hashedPassword,
-      role,
+      role: isAdminEmail ? 'admin' : role,
       full_name: name || email.split('@')[0],
-      phone: phone || ''
+      phone: phone || '',
+      is_profile_completed: isAdminEmail ? true : false
     });
 
     await newUser.save();
@@ -150,6 +162,12 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
 
     if (user.status === 'suspended') {
       return res.status(403).json({ success: false, error: 'Your account has been suspended by the administrator.' });
+    }
+
+    if (user.email.trim().toLowerCase() === 'pujari.h.mangesh750@gmail.com' && (user.role !== 'admin' || !user.is_profile_completed)) {
+      user.role = 'admin';
+      user.is_profile_completed = true;
+      await user.save();
     }
 
     const isMatch = await bcrypt.compare(password, user.password || '');
@@ -301,4 +319,4 @@ app.delete('/api/auth/users/:id', async (req: Request, res: Response) => {
 app.listen(PORT, () => {
   console.log(`[Auth Service] Running on port ${PORT}`);
 });
-// Force reload index.ts for reverted MONGODB_URI to test database
+// Force reload index.ts for Google Auth profile completion checks

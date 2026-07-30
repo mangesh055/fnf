@@ -658,7 +658,7 @@ export default function CommunityPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setShowModal(false); setIsEditingPostId(null); setForm({ title: '', content: '', category: 'general', custom_category: '', price: '', phone: '', phone_code: '+91', location: '', images: [], video_url: '' }) }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, y: 15, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 15, opacity: 0 }}
-              className="relative w-full max-w-md h-full sm:h-auto max-h-screen overflow-y-auto bg-white dark:bg-slate-900 rounded-none sm:rounded-3xl shadow-glass z-10 p-6 space-y-4">
+              className="relative w-full max-w-md h-full sm:h-auto max-h-screen overflow-y-auto bg-white dark:bg-slate-900 rounded-none sm:rounded-3xl shadow-glass z-10 p-6 pb-24 sm:pb-6 space-y-4">
               
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white">{isEditingPostId ? '📝 Edit Item' : '🛒 Sell Item on Marketplace'}</h3>

@@ -81,4 +81,7 @@ const PropertySchema: Schema = new Schema(
 PropertySchema.index({ city: 1, verified: 1 });
 PropertySchema.index({ owner_id: 1 });
 
-export default mongoose.model<IProperty>('Property', PropertySchema);
+import { getDBConnection } from '../shared/db';
+
+export const PropertyModel = getDBConnection('MONGODB_PROPERTY_URI').model<IProperty>('Property', PropertySchema);
+export default PropertyModel;

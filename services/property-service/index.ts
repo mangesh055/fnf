@@ -7,8 +7,7 @@ import Mess from './Mess';
 
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+
 
 const app = express();
 const PORT = process.env.PROPERTY_SERVICE_PORT || 5002;

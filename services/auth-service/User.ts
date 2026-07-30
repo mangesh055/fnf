@@ -36,4 +36,7 @@ const UserSchema: Schema = new Schema(
 // Optimize querying by email (unique index is created automatically, but explicitly defined here)
 UserSchema.index({ email: 1 });
 
-export default mongoose.model<IUser>('User', UserSchema);
+import { getDBConnection } from '../shared/db';
+
+export const UserModel = getDBConnection('MONGODB_PROPERTY_URI').model<IUser>('User', UserSchema);
+export default UserModel;

@@ -9,8 +9,7 @@ import User from './User';
 
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+
 
 const app = express();
 const PORT = process.env.AUTH_SERVICE_PORT || 5001;

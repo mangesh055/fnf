@@ -44,4 +44,7 @@ const RoommateSchema: Schema = new Schema(
 RoommateSchema.index({ city: 1, active: 1 });
 RoommateSchema.index({ student_id: 1 });
 
-export default mongoose.model<IRoommate>('Roommate', RoommateSchema);
+import { getDBConnection } from '../shared/db';
+
+export const RoommateModel = getDBConnection('MONGODB_ROOMMATE_URI').model<IRoommate>('Roommate', RoommateSchema);
+export default RoommateModel;

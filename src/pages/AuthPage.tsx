@@ -6,6 +6,8 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useAuthStore } from '../store/authStore'
 import type { UserRole } from '../types'
 import logoImg from '../assets/logo.jpeg'
+import { fetchMesses, fetchProperties } from '../lib/platformData'
+import { gatewayFetch } from '../lib/apiGateway'
 
 const roles: { value: UserRole; label: string; icon: string; desc: string }[] = [
   { value: 'student', label: 'Student', icon: '🎓', desc: 'Find PGs, messes & roommates near college' },
@@ -29,12 +31,36 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
 
-  const stats = {
-    properties: '1,200+',
-    messes: '400+',
-    students: '5,000+',
+  const [stats, setStats] = useState({
+    properties: '0+',
+    messes: '0+',
+    students: '0+',
     rating: '4.8'
-  }
+  })
+
+  // Load dynamic statistics from backend services
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const [propertyRows, messRows] = await Promise.all([fetchProperties(), fetchMesses()])
+        const propsCount = propertyRows?.length || 0
+        const messesCount = messRows?.length || 0
+        
+        const countRes = await gatewayFetch('/auth/users/count')
+        const studentsCount = countRes.success && typeof countRes.count === 'number' ? countRes.count : 0
+        
+        setStats({
+          properties: `${propsCount}+`,
+          messes: `${messesCount}+`,
+          students: `${studentsCount}+`,
+          rating: '4.8'
+        })
+      } catch (err) {
+        console.error('Failed to load stats on AuthPage:', err)
+      }
+    }
+    void loadStats()
+  }, [])
 
   // Auto-redirect logged-in users away from /auth unless they sign out
   useEffect(() => {

@@ -34,4 +34,7 @@ const PostSchema: Schema = new Schema(
 PostSchema.index({ category: 1 });
 PostSchema.index({ author_id: 1 });
 
-export default mongoose.model<IPost>('Post', PostSchema);
+import { getDBConnection } from '../shared/db';
+
+export const PostModel = getDBConnection('MONGODB_COMMUNITY_URI').model<IPost>('Post', PostSchema);
+export default PostModel;

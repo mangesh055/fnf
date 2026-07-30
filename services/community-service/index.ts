@@ -7,8 +7,7 @@ import Roommate from './Roommate';
 
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+
 
 const app = express();
 const PORT = process.env.COMMUNITY_SERVICE_PORT || 5004;

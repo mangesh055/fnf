@@ -63,4 +63,7 @@ const MessSchema: Schema = new Schema(
 MessSchema.index({ city: 1, verified: 1 });
 MessSchema.index({ owner_id: 1 });
 
-export default mongoose.model<IMess>('Mess', MessSchema);
+import { getDBConnection } from '../shared/db';
+
+export const MessModel = getDBConnection('MONGODB_MESS_URI').model<IMess>('Mess', MessSchema);
+export default MessModel;

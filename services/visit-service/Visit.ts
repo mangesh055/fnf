@@ -41,7 +41,4 @@ const VisitSchema: Schema = new Schema(
 VisitSchema.index({ owner_id: 1 });
 VisitSchema.index({ student_id: 1 });
 
-import { getDBConnection } from '../shared/db';
-
-export const VisitModel = getDBConnection('MONGODB_PROPERTY_URI').model<IVisit>('Visit', VisitSchema);
-export default VisitModel;
+export default mongoose.model<IVisit>('Visit', VisitSchema);

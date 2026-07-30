@@ -6,7 +6,8 @@ import Visit from './Visit';
 
 dotenv.config();
 
-
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 const PORT = process.env.VISIT_SERVICE_PORT || 5003;

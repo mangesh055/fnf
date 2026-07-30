@@ -8,13 +8,16 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { cn, formatCurrency, formatDate, getInitials } from '../lib/utils'
-import { fetchCommunityPosts } from '../lib/platformData'
+import { fetchCommunityPosts, invalidatePlatformCache } from '../lib/platformData'
 import { useFavoriteStore } from '../store/favoriteStore'
+import { useAuthStore } from '../store/authStore'
+import { gatewayFetch } from '../lib/apiGateway'
 import toast from 'react-hot-toast'
 
 export default function CommunityDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { profile } = useAuthStore()
   const routeLocation = useLocation()
   const statePost = routeLocation.state?.post
 
@@ -117,8 +120,8 @@ export default function CommunityDetailPage() {
     }
   } catch (e) {}
 
-  const sellerName = post.full_name || 'Campus Student'
-  const displayPhone = phone || '9876543210'
+  const sellerName = post.full_name || post.profiles?.full_name || 'Campus Student'
+  const displayPhone = phone || post.phone || post.profiles?.phone || '9876543210'
   const digitsOnly = displayPhone.replace(/[^0-9]/g, '')
   const phone10 = digitsOnly.length > 10 ? digitsOnly.slice(-10) : digitsOnly
   const formattedPhone = phone ? `+91 ${phone10}` : 'Not Provided'
@@ -401,7 +404,42 @@ export default function CommunityDetailPage() {
 
               {/* Action Buttons */}
               <div className="space-y-2.5">
-                {phone ? (
+                {post.author_id === profile?.id ? (
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        navigate('/community', { state: { editPostId: post.id } })
+                      }}
+                      className="w-full py-3.5 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-md shadow-brand-500/20 cursor-pointer border-none"
+                    >
+                      📝 Edit Listing
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={async () => {
+                        if (window.confirm('Are you sure you want to delete this listing?')) {
+                          const res = await gatewayFetch(`/community/posts/${post.id}`, {
+                            method: 'DELETE'
+                          })
+                          if (res.success) {
+                            invalidatePlatformCache()
+                            toast.success('Listing deleted successfully!')
+                            navigate('/community')
+                          } else {
+                            toast.error(res.error || 'Failed to delete listing')
+                          }
+                        }
+                      }}
+                      className="w-full py-3.5 px-4 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-md shadow-red-500/20 cursor-pointer border-none"
+                    >
+                      ❌ Delete Listing
+                    </motion.button>
+                  </>
+                ) : phone ? (
                   <>
                     <motion.a
                       whileHover={{ scale: 1.02 }}

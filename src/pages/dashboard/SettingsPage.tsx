@@ -108,11 +108,11 @@ export default function SettingsPage() {
     try {
       const publicUrl = await uploadToCloudinary(file)
 
-      const { error: updateError } = await supabase.from('profiles').update({
+      const result = await updateProfile({
         avatar_url: publicUrl
-      }).eq('id', profile.id)
+      })
 
-      if (updateError) throw updateError
+      if (!result.success) throw new Error(result.error || 'Failed to update profile picture')
       
       await fetchProfile(profile.id)
       setMessage({ type: 'success', text: 'Profile picture updated successfully!' })
@@ -132,8 +132,10 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' })
     
     try {
-      const { error } = await supabase.from('profiles').update({ avatar_url: '' }).eq('id', profile.id)
-      if (error) throw error
+      const result = await updateProfile({
+        avatar_url: ''
+      })
+      if (!result.success) throw new Error(result.error || 'Failed to remove profile picture')
 
       await fetchProfile(profile.id)
       setMessage({ type: 'success', text: 'Profile picture removed.' })

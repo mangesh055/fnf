@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Filter, Search, Plus, MapPin, X, Pencil, ArrowRight, ShieldAlert, BadgeCheck, MessageSquare, BookOpen, Notebook, Bike, Music, Speaker, Check, Upload, Video, HelpCircle, Calendar, Megaphone, Send, Share2, ThumbsUp, Heart, ShoppingBag, Camera, Phone, ChevronDown, Laptop, Tag } from 'lucide-react'
 import { uploadToCloudinary } from '../utils/cloudinary'
 import { useAuthStore } from '../store/authStore'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { CommunityPost } from '../types'
 import { cn, formatCurrency, formatDate } from '../lib/utils'
 import { fetchCommunityComments, fetchCommunityPosts, getCommunityCache, invalidatePlatformCache } from '../lib/platformData'
 import { supabase } from '../lib/supabase'
 import { gatewayFetch } from '../lib/apiGateway'
+import { usePersistedForm } from '../hooks/usePersistedForm'
 
 const categoryConfig = {
   all: { label: 'All Board', icon: HelpCircle, color: 'text-slate-500 bg-slate-100' },
@@ -24,6 +25,7 @@ const categoryConfig = {
 export default function CommunityPage() {
   const { profile } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
 
   // State initialized from instant cache to prevent white screens or delay on navigate back
   const [posts, setPosts] = useState<any[]>(() => getCommunityCache())
@@ -49,8 +51,9 @@ export default function CommunityPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isCategoryDropdownOpen])
 
-  // Form State
-  const [form, setForm] = useState({
+  // Form State — persisted in sessionStorage so camera round-trips don't wipe it
+  const COMMUNITY_FORM_KEY = `community_form_${profile?.id || 'guest'}`
+  const { form, setForm, clearPersistedForm } = usePersistedForm(COMMUNITY_FORM_KEY, {
     title: '',
     content: '',
     category: 'general' as keyof typeof categoryConfig,
@@ -101,6 +104,16 @@ export default function CommunityPage() {
     return () => { document.body.style.overflow = 'unset' }
   }, [showModal])
 
+  // Automatically pre-fill phone field from user profile when creating a new marketplace post
+  useEffect(() => {
+    if (profile && !isEditingPostId) {
+      setForm(prev => ({
+        ...prev,
+        phone: profile.phone || prev.phone
+      }))
+    }
+  }, [profile, isEditingPostId])
+
   useEffect(() => {
     let isMounted = true
     const load = async () => {
@@ -121,6 +134,67 @@ export default function CommunityPage() {
     load()
     return () => { isMounted = false }
   }, [])
+
+  useEffect(() => {
+    if (posts && posts.length > 0 && location.state?.editPostId) {
+      const editPostId = location.state.editPostId;
+      const post = posts.find((p: any) => String(p.id) === String(editPostId));
+      if (post) {
+        // Parse content
+        let textContent = post.content;
+        let phoneNo = '';
+        let locationVal = '';
+        let images: string[] = post.images || [];
+        let video_url = '';
+        let customCategoryName = '';
+        
+        try {
+          const parsed = JSON.parse(post.content);
+          if (parsed.text !== undefined) {
+            textContent = parsed.text;
+            phoneNo = parsed.phone || '';
+            locationVal = parsed.location || '';
+            if (parsed.images && parsed.images.length > 0) {
+              images = parsed.images;
+            }
+            if (parsed.video_url) {
+              video_url = parsed.video_url;
+            }
+            customCategoryName = parsed.custom_category || '';
+          }
+        } catch (e) {}
+
+        let phoneNoCode = phoneNo;
+        let phoneCode = '+91';
+        const validCodes = ['+91', '+1', '+44', '+61', '+971'];
+        for (const c of validCodes) {
+          if (phoneNo.startsWith(c)) {
+            phoneCode = c;
+            phoneNoCode = phoneNo.slice(c.length);
+            break;
+          }
+        }
+
+        setForm({
+          title: post.title,
+          content: textContent,
+          category: post.category as any,
+          custom_category: customCategoryName,
+          price: post.price ? post.price.toString() : '',
+          phone: phoneNoCode,
+          phone_code: phoneCode,
+          location: locationVal,
+          images: images,
+          video_url: video_url
+        });
+        setIsEditingPostId(post.id);
+        setShowModal(true);
+
+        // Clear location state to prevent repeating the modal pop
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [posts, location.state]);
 
   const handleCreatePost = (e: React.FormEvent) => {
     e.preventDefault()
@@ -170,6 +244,7 @@ export default function CommunityPage() {
         alert('Your changes are saved!')
         setShowModal(false)
         setIsEditingPostId(null)
+        clearPersistedForm()
         setForm({ title: '', content: '', category: 'general', custom_category: '', price: '', phone: '', phone_code: '+91', location: '', images: [], video_url: '' })
       })()
       return
@@ -204,6 +279,7 @@ export default function CommunityPage() {
       setPosts(prev => [{ ...newPost, profiles: profile }, ...prev])
       invalidatePlatformCache()
       setShowModal(false)
+      clearPersistedForm()
       setForm({ title: '', content: '', category: 'general', custom_category: '', price: '', phone: '', phone_code: '+91', location: '', images: [], video_url: '' })
     })()
   }

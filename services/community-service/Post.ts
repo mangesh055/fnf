@@ -10,6 +10,8 @@ export interface IPost extends Document {
   price?: number;
   likes: number;
   comment_count: number;
+  verified?: boolean;
+  rejected?: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -25,6 +27,8 @@ const PostSchema: Schema = new Schema(
     price: { type: Number },
     likes: { type: Number, default: 0 },
     comment_count: { type: Number, default: 0 },
+    verified: { type: Boolean, default: false },
+    rejected: { type: Boolean, default: false }
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
@@ -34,7 +38,4 @@ const PostSchema: Schema = new Schema(
 PostSchema.index({ category: 1 });
 PostSchema.index({ author_id: 1 });
 
-import { getDBConnection } from '../shared/db';
-
-export const PostModel = getDBConnection('MONGODB_COMMUNITY_URI').model<IPost>('Post', PostSchema);
-export default PostModel;
+export default mongoose.model<IPost>('Post', PostSchema);

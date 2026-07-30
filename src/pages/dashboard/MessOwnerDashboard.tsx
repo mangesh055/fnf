@@ -10,6 +10,8 @@ import { cn, formatCurrency, formatDate, mealTypeLabels, computeMessStatus, getM
 import type { InstallmentRecord } from '../../types'
 import { uploadToCloudinary } from '../../utils/cloudinary'
 import { invalidatePlatformCache } from '../../lib/platformData'
+import { usePersistedForm } from '../../hooks/usePersistedForm'
+import toast from 'react-hot-toast'
 
 type MessRow = {
   id: string
@@ -149,28 +151,67 @@ export default function MessOwnerDashboard() {
   const [attendance, setAttendance] = useState<AttendanceRow[]>([])
   const [transactions, setTransactions] = useState<TransactionRow[]>([])
   const [menu, setMenu] = useState<MenuRow | null>(null)
-  const [menuCard, setMenuCard] = useState<{name: string, price: string}[]>([])
+  const [menuCard, setMenuCard] = useState<{ name: string, price: string }[]>([])
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettingsRow>({ owner_id: profile?.id || '', upi_id: '', phone_number: '' })
   const [loading, setLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isUploadingMenuImg, setIsUploadingMenuImg] = useState(false)
   const [bannerMsg, setBannerMsg] = useState('')
 
-  const [messName, setMessName] = useState('')
-  const [description, setDescription] = useState('')
-  const [address, setAddress] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
-  const [serviceHours, setServiceHours] = useState('11:30 AM - 03:00 PM | 07:00 PM - 10:30 PM')
-  const [dayServiceTime, setDayServiceTime] = useState('11:30 AM - 03:00 PM')
-  const [eveningServiceTime, setEveningServiceTime] = useState('07:00 PM - 10:30 PM')
-  const [monthlyCharge, setMonthlyCharge] = useState('3200')
-  const [perMealCharge, setPerMealCharge] = useState('110')
-  const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>(['breakfast', 'lunch', 'dinner'])
-  const [latitude, setLatitude] = useState(18.5204)
-  const [longitude, setLongitude] = useState(73.8567)
-  const [googleMapsUrl, setGoogleMapsUrl] = useState('')
-  const [photos, setPhotos] = useState<string[]>([])
-  const [foodType, setFoodType] = useState<'veg' | 'non_veg' | 'both'>('both')
+  // Mess registration form — persisted in sessionStorage so camera round-trips don't wipe it
+  const MESS_FORM_KEY = `mess_form_${profile?.id || 'guest'}`
+  const { form: messForm, setForm: setMessForm, clearPersistedForm: clearMessForm } = usePersistedForm(MESS_FORM_KEY, {
+    messName: '',
+    description: '',
+    address: '',
+    contactPhone: '',
+    dayServiceTime: '11:30 AM - 03:00 PM',
+    eveningServiceTime: '07:00 PM - 10:30 PM',
+    monthlyCharge: '3200',
+    perMealCharge: '110',
+    selectedMealTypes: ['breakfast', 'lunch', 'dinner'] as string[],
+    latitude: 18.5204,
+    longitude: 73.8567,
+    googleMapsUrl: '',
+    photos: [] as string[],
+    foodType: 'both' as 'veg' | 'non_veg' | 'both',
+  })
+
+  // Convenience destructures so existing code referencing these names keeps working
+  const messName = messForm.messName
+  const description = messForm.description
+  const address = messForm.address
+  const contactPhone = messForm.contactPhone
+  const serviceHours = `${messForm.dayServiceTime} | ${messForm.eveningServiceTime}`
+  const dayServiceTime = messForm.dayServiceTime
+  const eveningServiceTime = messForm.eveningServiceTime
+  const monthlyCharge = messForm.monthlyCharge
+  const perMealCharge = messForm.perMealCharge
+  const selectedMealTypes = messForm.selectedMealTypes
+  const latitude = messForm.latitude
+  const longitude = messForm.longitude
+  const googleMapsUrl = messForm.googleMapsUrl
+  const photos = messForm.photos
+  const foodType = messForm.foodType
+
+  // Setters that write through to the persisted form
+  const setMessName = (v: string) => setMessForm(p => ({ ...p, messName: v }))
+  const setDescription = (v: string) => setMessForm(p => ({ ...p, description: v }))
+  const setAddress = (v: string) => setMessForm(p => ({ ...p, address: v }))
+  const setContactPhone = (v: string) => setMessForm(p => ({ ...p, contactPhone: v }))
+  const setDayServiceTime = (v: string) => setMessForm(p => ({ ...p, dayServiceTime: v }))
+  const setEveningServiceTime = (v: string) => setMessForm(p => ({ ...p, eveningServiceTime: v }))
+  const setMonthlyCharge = (v: string) => setMessForm(p => ({ ...p, monthlyCharge: v }))
+  const setPerMealCharge = (v: string) => setMessForm(p => ({ ...p, perMealCharge: v }))
+  const setSelectedMealTypes = (v: string[] | ((prev: string[]) => string[])) =>
+    setMessForm(p => ({ ...p, selectedMealTypes: typeof v === 'function' ? v(p.selectedMealTypes) : v }))
+  const setLatitude = (v: number) => setMessForm(p => ({ ...p, latitude: v }))
+  const setLongitude = (v: number) => setMessForm(p => ({ ...p, longitude: v }))
+  const setGoogleMapsUrl = (v: string) => setMessForm(p => ({ ...p, googleMapsUrl: v }))
+  const setPhotos = (v: string[] | ((prev: string[]) => string[])) =>
+    setMessForm(p => ({ ...p, photos: typeof v === 'function' ? v(p.photos) : v }))
+  const setFoodType = (v: 'veg' | 'non_veg' | 'both') => setMessForm(p => ({ ...p, foodType: v }))
+
   const [hasDraftData, setHasDraftData] = useState(false)
 
   // localStorage keys for draft persistence
@@ -254,6 +295,17 @@ export default function MessOwnerDashboard() {
       loadDraftFromStorage()
     }
   }, [])
+
+  // Automatically pre-fill contact phone from profile when creating a new mess listing
+  const phoneInitialized = useRef(false)
+  useEffect(() => {
+    if (profile && !mess && !phoneInitialized.current) {
+      if (profile.phone) {
+        setContactPhone(profile.phone)
+        phoneInitialized.current = true
+      }
+    }
+  }, [profile, mess])
 
   // Auto-save form data whenever it changes (debounced)
   useEffect(() => {
@@ -355,12 +407,12 @@ export default function MessOwnerDashboard() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
-    
+
     setIsUploading(true)
     try {
       const uploadPromises = Array.from(files).map(file => uploadToCloudinary(file))
       const urls = await Promise.all(uploadPromises)
-      
+
       setPhotos(prev => [...prev, ...urls])
     } catch (error: any) {
       alert('Failed to upload image: ' + error.message)
@@ -424,7 +476,6 @@ export default function MessOwnerDashboard() {
       setDescription(currentMess.description || '')
       setAddress(currentMess.address || '')
       setContactPhone(currentMess.contact_phone || '')
-      setServiceHours(currentMess.service_hours || '11:30 AM - 03:00 PM | 07:00 PM - 10:30 PM')
       setDayServiceTime(currentMess.day_service_time || '11:30 AM - 03:00 PM')
       setEveningServiceTime(currentMess.evening_service_time || '07:00 PM - 10:30 PM')
       setMonthlyCharge(String(currentMess.monthly_charge || 3200))
@@ -443,7 +494,7 @@ export default function MessOwnerDashboard() {
         supabase.from('student_attendance').select('*').eq('mess_id', currentMess.id).order('date', { ascending: false }),
         supabase.from('mess_transactions').select('*').eq('owner_id', profile.id).order('date', { ascending: false }),
         supabase.from('mess_payment_settings').select('*').eq('owner_id', profile.id).maybeSingle(),
-        supabase.from('mess_menus').select('*').eq('owner_id', profile.id).order('date', { ascending: false }).limit(1),
+        gatewayFetch<MenuRow[]>(`/messes/menus?owner_id=${profile.id}`),
       ])
 
       const planRows = (plansResult.data || []) as PlanRow[]
@@ -476,9 +527,14 @@ export default function MessOwnerDashboard() {
         phone_number: (paymentResult.data as PaymentSettingsRow | null)?.phone_number || '',
       })
       const fetchedMenu = menuRows[0] || null
+      console.log('[MessOwnerDashboard] menuResult:', menuResult)
+      console.log('[MessOwnerDashboard] fetchedMenu:', fetchedMenu)
+      console.log('[MessOwnerDashboard] todayStr:', todayStr)
       if (fetchedMenu && fetchedMenu.date === todayStr) {
+        console.log('[MessOwnerDashboard] Date matches! Setting menu state.')
         setMenu(fetchedMenu)
       } else {
+        console.log('[MessOwnerDashboard] Date mismatch or no menu found. Setting menu to null.')
         setMenu(null)
       }
     } catch (error) {
@@ -499,8 +555,8 @@ export default function MessOwnerDashboard() {
 
   useEffect(() => {
     if (googleMapsUrl) {
-      const match = googleMapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
-                    googleMapsUrl.match(/[?&](?:q|query|ll|pb=!-?\d+d)(-?\d+\.\d+)[,!](-?\d+\.\d+)/);
+      const match = googleMapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+        googleMapsUrl.match(/[?&](?:q|query|ll|pb=!-?\d+d)(-?\d+\.\d+)[,!](-?\d+\.\d+)/);
       if (match) {
         setLatitude(parseFloat(match[1]));
         setLongitude(parseFloat(match[2]));
@@ -538,9 +594,9 @@ export default function MessOwnerDashboard() {
     const itemName = newItemRef.current?.value || ''
     const itemPrice = newItemPriceRef.current?.value || ''
     if (!itemName.trim()) return
-    
+
     setMenuCard(prev => [...prev, { name: itemName.trim(), price: itemPrice.trim() }])
-    
+
     if (newItemRef.current) newItemRef.current.value = ''
     if (newItemPriceRef.current) newItemPriceRef.current.value = ''
   }
@@ -563,10 +619,14 @@ export default function MessOwnerDashboard() {
 
   const updateMenuCard = async () => {
     if (!profile || !mess) return
-    const { error } = await supabase.from('messes').update({ menu_card: menuCard }).eq('id', mess.id)
-    if (error) {
-      console.error('Failed to save menu card:', error)
-      alert(`Database Error: ${error.message}. Please make sure you added the 'menu_card' column to the 'messes' table!`)
+    const res = await gatewayFetch(`/messes/${mess.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ menu_card: menuCard })
+    })
+    console.log('[updateMenuCard] response:', res);
+    if (!res.success) {
+      console.error('Failed to save menu card:', res.error)
+      alert(`Database Error: ${res.error || 'Failed to save menu card'}`)
       return
     }
     setBannerMsg('Menu Card saved successfully')
@@ -631,24 +691,17 @@ export default function MessOwnerDashboard() {
       image_url: currentMenu.image_url || null,
       updated_at: new Date().toISOString(),
     }
-    let { error } = await supabase.from('mess_menus').upsert(payload)
-    if (error) {
-      const fallbackPayload = {
-        id: payload.id,
-        owner_id: payload.owner_id,
-        date: payload.date,
-        breakfast: payload.breakfast,
-        lunch: payload.lunch,
-        dinner: payload.dinner,
-        snack: payload.snack,
-        updated_at: payload.updated_at
-      }
-      const res = await supabase.from('mess_menus').upsert(fallbackPayload)
-      error = res.error
-    }
-    if (error) {
-      console.error('Failed to save daily menu:', error)
-      alert(`Database Error: ${error.message}`)
+
+    console.log('[updateDailyMenu] saving menu payload:', payload);
+    const res = await gatewayFetch('/messes/menus', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+    console.log('[updateDailyMenu] response:', res);
+
+    if (!res.success) {
+      console.error('Failed to save daily menu:', res.error)
+      alert(`Database Error: ${res.error || 'Failed to save menu'}`)
       return
     }
     setMenu(payload as MenuRow)
@@ -658,7 +711,7 @@ export default function MessOwnerDashboard() {
 
   const savePlan = async () => {
     if (!profile || !mess || !planForm.name.trim() || !planForm.price || planForm.meal_types.length === 0) return
-    
+
     if (editingPlanId) {
       const payload = {
         name: planForm.name,
@@ -744,82 +797,116 @@ export default function MessOwnerDashboard() {
       alert('User session not found. Please log in again.')
       return
     }
+
+    if (!messName.trim()) {
+      alert('Please enter a Mess Service Name.')
+      return
+    }
+
+    if (!contactPhone.trim()) {
+      alert('Please enter a Contact Phone number.')
+      return
+    }
+
+    if (!address.trim()) {
+      alert('Please enter the Address.')
+      return
+    }
+
     if (!selectedMealTypes.length) {
       alert('Please select at least one meal category served.')
       return
     }
 
-    if (!mess?.id) {
-      const checkRes = await gatewayFetch(`/messes?owner_id=${profile.id}`)
-      const existingMess = (checkRes.success && checkRes.data && checkRes.data.length > 0) ? checkRes.data[0] : null;
-      if (existingMess) {
-        alert('You have already registered a mess.')
-        await loadDashboard()
+    try {
+      if (!mess?.id) {
+        const checkRes = await gatewayFetch(`/messes?owner_id=${profile.id}`)
+        const existingMess = (checkRes.success && checkRes.data && checkRes.data.length > 0) ? checkRes.data[0] : null;
+        if (existingMess) {
+          alert('You have already registered a mess.')
+          await loadDashboard()
+          return
+        }
+      }
+
+      const computedStatus = computeMessStatus(dayServiceTime, eveningServiceTime, serviceHours)
+      const combinedServiceHours = `Day: ${dayServiceTime} | Eve: ${eveningServiceTime}`
+
+      const safeQrToken = mess?.qr_token || (
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : 'qr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11)
+      )
+
+      const payload = {
+        id: mess?.id || `mess-${Date.now()}`,
+        owner_id: profile.id,
+        qr_token: safeQrToken,
+        name: messName.trim(),
+        description: description.trim(),
+        address: address.trim(),
+        city: mess?.city || 'Pune',
+        state: mess?.state || 'Maharashtra',
+        latitude,
+        longitude,
+        google_maps_url: googleMapsUrl.trim(),
+        service_hours: combinedServiceHours,
+        day_service_time: dayServiceTime,
+        evening_service_time: eveningServiceTime,
+        contact_phone: contactPhone.trim(),
+        monthly_charge: Number(monthlyCharge) || 0,
+        per_meal_charge: Number(perMealCharge) || 0,
+        status: computedStatus,
+        verified: mess?.verified || false,
+        featured: mess?.featured || false,
+        rating: mess?.rating || 5,
+        review_count: mess?.review_count || 0,
+        food_type: foodType,
+        meal_types: selectedMealTypes,
+        photos: photos.length > 0 ? photos : ['https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600'],
+        created_at: mess?.id ? undefined : new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const isNewMess = !mess?.id;
+
+      const gatewayRes = isNewMess
+        ? await gatewayFetch('/messes', { method: 'POST', body: JSON.stringify(payload) })
+        : await gatewayFetch(`/messes/${mess.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+
+      const error = gatewayRes.success ? null : { message: gatewayRes.error || 'Failed to save mess' };
+      if (error) {
+        console.error('Failed to save mess profile:', error)
+        alert(`Failed to save: ${error.message}`)
         return
       }
+
+      invalidatePlatformCache()
+
+      if (isNewMess) {
+        await supabase.from('app_notifications').insert({
+          user_id: profile.id,
+          type: 'info',
+          title: 'Mess Registration Submitted',
+          message: 'Your mess has been registered and is pending admin approval before it becomes visible on the platform.',
+          read: false,
+        })
+        alert('Mess registered successfully!')
+        toast.success('Mess registered successfully!')
+      } else {
+        alert('Mess profile updated successfully!')
+        toast.success('Mess profile updated successfully!')
+      }
+
+      setBannerMsg('Mess profile saved successfully')
+      setTimeout(() => setBannerMsg(''), 2500)
+      clearDraftFromStorage()
+      clearMessForm()  // also clear sessionStorage persisted form
+      await loadDashboard()
+    } catch (err: any) {
+      console.error('Runtime error saving mess profile:', err)
+      alert(`An error occurred: ${err.message || err}`)
     }
-
-    const computedStatus = computeMessStatus(dayServiceTime, eveningServiceTime, serviceHours)
-    const combinedServiceHours = `Day: ${dayServiceTime} | Eve: ${eveningServiceTime}`
-
-    const payload = {
-      id: mess?.id || `mess-${Date.now()}`,
-      owner_id: profile.id,
-      qr_token: mess?.qr_token || crypto.randomUUID(),
-      name: messName,
-      description,
-      address,
-      city: mess?.city || 'Pune',
-      state: mess?.state || 'Maharashtra',
-      latitude,
-      longitude,
-      google_maps_url: googleMapsUrl,
-      service_hours: combinedServiceHours,
-      day_service_time: dayServiceTime,
-      evening_service_time: eveningServiceTime,
-      contact_phone: contactPhone,
-      monthly_charge: Number(monthlyCharge),
-      per_meal_charge: Number(perMealCharge),
-      status: computedStatus,
-      verified: mess?.verified || false,
-      featured: mess?.featured || false,
-      rating: mess?.rating || 5,
-      review_count: mess?.review_count || 0,
-      food_type: foodType,
-      meal_types: selectedMealTypes,
-      photos: photos.length > 0 ? photos : ['https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600'],
-      created_at: mess?.id ? undefined : new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-
-    const isNewMess = !mess?.id;
-
-    const gatewayRes = isNewMess
-      ? await gatewayFetch('/messes', { method: 'POST', body: JSON.stringify(payload) })
-      : await gatewayFetch(`/messes/${mess.id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    const error = gatewayRes.success ? null : { message: gatewayRes.error || 'Failed to save mess' };
-    if (error) {
-      console.error('Failed to save mess profile:', error)
-      alert(`Failed to save: ${error.message}`)
-      return
-    }
-
-    invalidatePlatformCache()
-
-    if (isNewMess) {
-      await supabase.from('app_notifications').insert({
-        user_id: profile.id,
-        type: 'info',
-        title: 'Mess Registration Submitted',
-        message: 'Your mess has been registered and is pending admin approval before it becomes visible on the platform.',
-        read: false,
-      })
-    }
-
-    setBannerMsg('Mess profile saved successfully')
-    setTimeout(() => setBannerMsg(''), 2500)
-    clearDraftFromStorage()
-    await loadDashboard()
   }
 
   const handleGeneratePaymentQR = async (plan: PlanRow) => {
@@ -848,7 +935,7 @@ export default function MessOwnerDashboard() {
     if (!searchPhone.trim()) return
     setSearchLoading(true)
     setFoundUser(null)
-    
+
     const searchPattern = `%${searchPhone.trim()}%`;
     const fullSearchPattern = `%${searchCountryCode}%${searchPhone.trim()}%`;
 
@@ -858,7 +945,7 @@ export default function MessOwnerDashboard() {
       .or(`phone.ilike.${searchPattern},phone.ilike.${fullSearchPattern}`)
       .limit(1)
       .maybeSingle()
-      
+
     if (error || !data) {
       console.error('Search error:', error);
       alert('User not found with this phone number.')
@@ -921,7 +1008,7 @@ export default function MessOwnerDashboard() {
 
     setBannerMsg('Subscriber added successfully')
     setTimeout(() => setBannerMsg(''), 2500)
-    
+
     // Clear form and reload data
     setSearchPhone('')
     setFoundUser(null)
@@ -935,12 +1022,12 @@ export default function MessOwnerDashboard() {
     const newAmount = Math.max(0, Number(editPaymentAmount) || 0);
     const dueAmount = Math.max(0, planPrice - newAmount);
     const newStatus = dueAmount === 0 ? 'paid' : newAmount > 0 ? 'partial' : 'pending';
-    
+
     const { error } = await supabase
       .from('student_subscriptions')
       .update({ amount_paid: newAmount, payment_status: newStatus })
       .eq('id', subId);
-      
+
     if (!error) {
       setSubscribers(prev => prev.map(s => s.id === subId ? { ...s, amount_paid: newAmount, payment_status: newStatus } : s));
       setEditingPaymentId(null);
@@ -963,8 +1050,8 @@ export default function MessOwnerDashboard() {
     const existingInstallments: InstallmentRecord[] = Array.isArray(ledgerSub.installments) && ledgerSub.installments.length > 0
       ? ledgerSub.installments
       : ledgerSub.amount_paid > 0
-      ? [{ id: `inst-init-${ledgerSub.id}`, subscription_id: ledgerSub.id, amount: ledgerSub.amount_paid, payment_date: ledgerSub.start_date || new Date().toISOString(), payment_mode: 'upi', notes: 'Initial Payment' }]
-      : []
+        ? [{ id: `inst-init-${ledgerSub.id}`, subscription_id: ledgerSub.id, amount: ledgerSub.amount_paid, payment_date: ledgerSub.start_date || new Date().toISOString(), payment_mode: 'upi', notes: 'Initial Payment' }]
+        : []
 
     const newRecord: InstallmentRecord = {
       id: `inst-${Date.now()}`,
@@ -1064,9 +1151,9 @@ export default function MessOwnerDashboard() {
       `"${formatDate(sub.end_date)}"`,
       `"${sub.payment_status}"`
     ])
-    
+
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-    
+
     // Trigger download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
@@ -1102,7 +1189,7 @@ export default function MessOwnerDashboard() {
 
         <div className="card p-8 space-y-4 max-w-2xl mx-auto">
           {renderBanner()}
-          
+
           {hasDraftData && (
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
               <div className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5">📝</div>
@@ -1118,13 +1205,13 @@ export default function MessOwnerDashboard() {
               </button>
             </div>
           )}
-          
+
           <div><label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mess Service Name</label><input value={messName} onChange={(e) => setMessName(e.target.value)} placeholder="Mess Service Name" className="input-field" /></div>
           <div><label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="input-field min-h-24" /></div>
           <div><label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Contact Phone</label><input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Contact Phone" className="input-field" /></div>
           {renderServiceHoursInputs()}
           <div><label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Address</label><input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" className="input-field" /></div>
-          
+
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-500 uppercase">GPS Location</label>
             <div className="flex items-center gap-4">
@@ -1178,14 +1265,14 @@ export default function MessOwnerDashboard() {
 
           {(latitude && longitude && (latitude !== 18.5204 || longitude !== 73.8567)) && (
             <div className="w-full h-48 rounded-xl overflow-hidden border border-slate-200 mt-2">
-              <iframe 
+              <iframe
                 src={`https://maps.google.com/maps?q=${latitude},${longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                width="100%" 
-                height="100%" 
-                style={{ border: 0 }} 
-                allowFullScreen 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade" 
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
           )}
@@ -1196,8 +1283,8 @@ export default function MessOwnerDashboard() {
               {photos.map((img, i) => (
                 <div key={i} className="relative aspect-video rounded-lg overflow-hidden group">
                   <img src={img} alt={`Preview ${i}`} className="w-full h-full object-cover" />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => removePhoto(i)}
                     className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -1306,13 +1393,13 @@ export default function MessOwnerDashboard() {
           </div>
           <Link to="/dashboard/mess" className="btn-secondary text-sm">Back to Overview</Link>
         </div>
-        
+
         <div className="card p-6 space-y-6 max-w-4xl">
           <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <h3 className="font-bold">Active Menu Card Items</h3>
             <button onClick={() => setMenuCard([])} className="text-xs text-red-500 hover:underline font-medium">Clear All</button>
           </div>
-          
+
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {menuCard.map((item, idx) => (
               <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 text-sm font-medium text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm">
@@ -1320,7 +1407,7 @@ export default function MessOwnerDashboard() {
                   <span className="truncate">{item.name}</span>
                   <span className="font-bold ml-2 shrink-0">₹{item.price}</span>
                 </div>
-                <button 
+                <button
                   onClick={() => setMenuCard(prev => prev.filter((_, i) => i !== idx))}
                   className="p-1.5 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
                 >
@@ -1334,7 +1421,7 @@ export default function MessOwnerDashboard() {
               </div>
             )}
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-slate-100">
             <input ref={newItemRef} className="input-field flex-1" placeholder="Item Name (e.g. Paneer Butter Masala)" />
             <input ref={newItemPriceRef} className="input-field w-full sm:w-32" placeholder="Price (₹)" type="number" />
@@ -1500,19 +1587,19 @@ export default function MessOwnerDashboard() {
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Included Meals</label>
               <div className="grid grid-cols-2 gap-2">
-                {(['lunch', 'dinner'] as const).map((meal) => 
-                  <button 
-                    key={meal} 
+                {(['lunch', 'dinner'] as const).map((meal) =>
+                  <button
+                    key={meal}
                     type="button"
                     onClick={() => setPlanForm((prev) => {
                       const isSelected = prev.meal_types.includes(meal);
                       const newMeals = isSelected ? prev.meal_types.filter((item) => item !== meal) : [...prev.meal_types, meal];
-                      return { 
-                        ...prev, 
+                      return {
+                        ...prev,
                         meal_types: newMeals,
                         daily_scan_limit: newMeals.length > 0 ? newMeals.length.toString() : ''
                       };
-                    })} 
+                    })}
                     className={cn('p-2 rounded-xl border text-xs capitalize transition-colors', planForm.meal_types.includes(meal) ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50')}
                   >
                     {meal}
@@ -1523,17 +1610,17 @@ export default function MessOwnerDashboard() {
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Daily Scan Limit</label>
               <div className="flex gap-2 items-center">
-                <input 
-                  className="input-field w-32" 
-                  value={planForm.daily_scan_limit} 
-                  onChange={(e) => setPlanForm((prev) => ({ ...prev, daily_scan_limit: e.target.value }))} 
-                  placeholder="e.g. 2" 
-                  type="number" 
+                <input
+                  className="input-field w-32"
+                  value={planForm.daily_scan_limit}
+                  onChange={(e) => setPlanForm((prev) => ({ ...prev, daily_scan_limit: e.target.value }))}
+                  placeholder="e.g. 2"
+                  type="number"
                   disabled={planForm.daily_scan_limit === '' && planForm.meal_types.length === 0}
                 />
-                <button 
+                <button
                   type="button"
-                  onClick={() => setPlanForm(prev => ({ ...prev, daily_scan_limit: prev.daily_scan_limit === '' ? (prev.meal_types.length > 0 ? prev.meal_types.length.toString() : '2') : '' }))} 
+                  onClick={() => setPlanForm(prev => ({ ...prev, daily_scan_limit: prev.daily_scan_limit === '' ? (prev.meal_types.length > 0 ? prev.meal_types.length.toString() : '2') : '' }))}
                   className={cn('px-4 py-2.5 rounded-xl border text-xs font-medium transition-colors', planForm.daily_scan_limit === '' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50')}
                 >
                   Unlimited
@@ -1549,7 +1636,7 @@ export default function MessOwnerDashboard() {
             </div>
           </div>
           <div className="card p-6 lg:col-span-2 space-y-3">
-            {plans.map((plan) => 
+            {plans.map((plan) =>
               <div key={plan.id} className="p-4 rounded-2xl border border-slate-200 flex items-center justify-between">
                 <div>
                   <div className="font-bold">{plan.name}</div>
@@ -1582,9 +1669,9 @@ export default function MessOwnerDashboard() {
           <h3 className="font-bold text-sm">Add New Subscriber Manually</h3>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex flex-1 gap-2">
-              <select 
-                className="input-field w-24 shrink-0" 
-                value={searchCountryCode} 
+              <select
+                className="input-field w-24 shrink-0"
+                value={searchCountryCode}
                 onChange={(e) => setSearchCountryCode(e.target.value)}
               >
                 <option value="+91">+91 (IN)</option>
@@ -1592,19 +1679,19 @@ export default function MessOwnerDashboard() {
                 <option value="+44">+44 (UK)</option>
                 <option value="+61">+61 (AU)</option>
               </select>
-              <input 
-                type="text" 
-                className="input-field flex-1" 
-                placeholder="Search user by phone number..." 
-                value={searchPhone} 
-                onChange={(e) => setSearchPhone(e.target.value)} 
+              <input
+                type="text"
+                className="input-field flex-1"
+                placeholder="Search user by phone number..."
+                value={searchPhone}
+                onChange={(e) => setSearchPhone(e.target.value)}
               />
             </div>
             <button onClick={handleSearchUser} disabled={searchLoading} className="btn-secondary whitespace-nowrap">
               {searchLoading ? 'Searching...' : 'Search User'}
             </button>
           </div>
-          
+
           {foundUser && (
             <div className="flex flex-col gap-4 mt-4 p-4 border border-brand-200 dark:border-brand-800 rounded-xl bg-white dark:bg-slate-900">
               <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -1614,9 +1701,9 @@ export default function MessOwnerDashboard() {
                 </div>
                 <div className="flex-1 w-full">
                   <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Select Plan</label>
-                  <select 
-                    className="input-field py-2" 
-                    value={selectedAddPlanId} 
+                  <select
+                    className="input-field py-2"
+                    value={selectedAddPlanId}
                     onChange={(e) => {
                       setSelectedAddPlanId(e.target.value);
                       const p = plans.find(plan => plan.id === e.target.value);
@@ -1630,7 +1717,7 @@ export default function MessOwnerDashboard() {
                   </select>
                 </div>
               </div>
-              
+
               {selectedAddPlanId && (
                 <div className="flex flex-col sm:flex-row gap-4 items-end border-t border-slate-100 dark:border-slate-800 pt-4">
                   <div className="flex-1 w-full">
@@ -1646,8 +1733,8 @@ export default function MessOwnerDashboard() {
                       <input type="number" className="input-field" value={addPlanAmountPaid} onChange={(e) => setAddPlanAmountPaid(e.target.value)} placeholder="e.g. 2000" />
                     </div>
                   )}
-                  <button 
-                    onClick={handleAddSubscriber} 
+                  <button
+                    onClick={handleAddSubscriber}
                     disabled={!selectedAddPlanId}
                     className="btn-primary w-full sm:w-auto mb-1"
                   >
@@ -1795,7 +1882,7 @@ export default function MessOwnerDashboard() {
                 {plans.map(plan => {
                   const subsForPlan = subscribers.filter(s => s.plan_id === plan.id).length
                   const percentage = subscribers.length > 0 ? Math.round((subsForPlan / subscribers.length) * 100) : 0
-                  
+
                   return (
                     <div key={plan.id}>
                       <div className="flex justify-between text-sm font-medium mb-1">
@@ -1813,7 +1900,7 @@ export default function MessOwnerDashboard() {
               <p className="text-slate-500 text-sm">No plans available to show breakdown.</p>
             )}
           </div>
-          
+
           <div className="card p-6">
             <h3 className="font-bold mb-4 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-brand-500" /> Recent Attendance Activity
@@ -1856,7 +1943,7 @@ export default function MessOwnerDashboard() {
           <div><label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Contact Phone</label><input className="input-field" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Contact Phone" /></div>
           {renderServiceHoursInputs()}
           <div><label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Address</label><input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" /></div>
-          
+
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-500 uppercase">GPS Location</label>
             <div className="flex items-center gap-4">
@@ -1911,14 +1998,14 @@ export default function MessOwnerDashboard() {
 
           {(latitude && longitude && (latitude !== 18.5204 || longitude !== 73.8567)) && (
             <div className="w-full h-48 rounded-xl overflow-hidden border border-slate-200 mt-2">
-              <iframe 
+              <iframe
                 src={`https://maps.google.com/maps?q=${latitude},${longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                width="100%" 
-                height="100%" 
-                style={{ border: 0 }} 
-                allowFullScreen 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade" 
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
           )}
@@ -1929,8 +2016,8 @@ export default function MessOwnerDashboard() {
               {photos.map((img, i) => (
                 <div key={i} className="relative aspect-video rounded-lg overflow-hidden group">
                   <img src={img} alt={`Preview ${i}`} className="w-full h-full object-cover" />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => removePhoto(i)}
                     className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -1989,9 +2076,9 @@ export default function MessOwnerDashboard() {
           <h2 className="text-xl font-bold mb-6 text-center">{mess.name}</h2>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             {mess.qr_token ? (
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(mess.qr_token)}`} 
-                alt="Mess Check-in QR" 
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(mess.qr_token)}`}
+                alt="Mess Check-in QR"
                 className="w-48 h-48 sm:w-64 sm:h-64 object-contain"
               />
             ) : (
@@ -2019,8 +2106,8 @@ export default function MessOwnerDashboard() {
     const instList: InstallmentRecord[] = Array.isArray(ledgerSub.installments) && ledgerSub.installments.length > 0
       ? ledgerSub.installments
       : ledgerSub.amount_paid > 0
-      ? [{ id: `inst-init-${ledgerSub.id}`, subscription_id: ledgerSub.id, amount: ledgerSub.amount_paid, payment_date: ledgerSub.start_date || ledgerSub.created_at || new Date().toISOString(), payment_mode: 'upi', notes: 'Initial Payment' }]
-      : []
+        ? [{ id: `inst-init-${ledgerSub.id}`, subscription_id: ledgerSub.id, amount: ledgerSub.amount_paid, payment_date: ledgerSub.start_date || ledgerSub.created_at || new Date().toISOString(), payment_mode: 'upi', notes: 'Initial Payment' }]
+        : []
 
     return (
       <AnimatePresence>

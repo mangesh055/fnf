@@ -9,6 +9,7 @@ import { formatCurrency, propertyTypeLabels, formatDate, getInitials } from '../
 import { cn } from '../lib/utils'
 import { useAuthStore } from '../store/authStore'
 import { fetchReviews } from '../lib/platformData'
+import { gatewayFetch } from '../lib/apiGateway'
 import { supabase } from '../lib/supabase'
 import { getVITDistances } from '../utils/distanceUtils'
 import ContactOwnerModal from '../components/property/ContactOwnerModal'
@@ -72,8 +73,11 @@ export default function PropertyDetailPage() {
   }
 
   useEffect(() => {
-    void loadProperties()
-  }, [loadProperties])
+    // Only fetch if we don't already have data in the store
+    if (properties.length === 0) {
+      void loadProperties()
+    }
+  }, [loadProperties, properties.length])
 
   useEffect(() => {
     const loadReviews = async () => {
@@ -131,9 +135,9 @@ export default function PropertyDetailPage() {
 
   const handleDeleteReview = async (reviewId: string) => {
     if (!profile?.id) return
-    const { error } = await supabase.from('reviews').delete().eq('id', reviewId).eq('reviewer_id', profile.id)
-    if (error) {
-      console.error('Failed to delete review:', error)
+    const res = await gatewayFetch(`/properties/reviews/${reviewId}`, { method: 'DELETE' })
+    if (!res.success) {
+      console.error('Failed to delete review:', res.error)
       return
     }
     const newReviewsList = reviewsList.filter(r => r.id !== reviewId)
@@ -159,9 +163,19 @@ export default function PropertyDetailPage() {
     }
 
     void (async () => {
-      const { error } = await supabase.from('reviews').insert([newR])
-      if (error) {
-        console.error('Failed to save review to Supabase:', error)
+      const res = await gatewayFetch('/properties/reviews', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: newR.id,
+          property_id: newR.property_id,
+          reviewer_id: newR.reviewer_id,
+          reviewer_name: newR.full_name,
+          rating: newR.rating,
+          comment: newR.comment
+        })
+      })
+      if (!res.success) {
+        console.error('Failed to save review:', res.error)
         return
       }
 

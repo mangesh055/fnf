@@ -383,7 +383,8 @@ export default function AuthPage() {
                             setLoading(true)
                             const res = await signInWithGoogle(
                               credentialResponse.credential,
-                              activeTab === 'register' ? selectedRole : undefined
+                              activeTab === 'register' ? selectedRole : undefined,
+                              activeTab
                             )
                             setLoading(false)
                             if (!res.success) {

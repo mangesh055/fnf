@@ -32,9 +32,9 @@ export default function CompleteProfileModal() {
       if (profile.role && profile.role !== 'admin') {
         setRole(profile.role)
       }
-      if (profile.is_profile_completed) {
-        setDismissed(true)
-      }
+      setDismissed(profile.is_profile_completed || false)
+    } else {
+      setDismissed(false)
     }
   }, [profile])
 

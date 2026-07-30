@@ -204,25 +204,8 @@ export default function MessPage() {
           </div>
         )}
 
-        {/* How it works */}
-        <div className="mt-16 card p-8">
-          <h3 className="text-3xl font-serif italic font-bold text-slate-900 dark:text-white text-center mb-8">How Digital Mess Works</h3>
-          <div className="grid grid-cols-4 gap-2 sm:gap-6">
-            {[
-              { icon: '🔍', step: '1', title: 'Find & Subscribe', desc: 'Browse mess services and subscribe to an active meal plan.' },
-              { icon: '📱', step: '2', title: 'Open Your App', desc: 'Launch the FlatsNFood app when you arrive at the mess.' },
-              { icon: '📷', step: '3', title: 'Scan QR', desc: 'Scan the static QR code poster directly from your dashboard.' },
-              { icon: '✅', step: '4', title: 'Attendance Logged', desc: 'System automatically verifies limits and logs your meal!' },
-            ].map(item => (
-              <div key={item.step} className="text-center">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-brand-50 dark:bg-brand-950/30 flex items-center justify-center text-xl sm:text-3xl mx-auto mb-1.5 sm:mb-3">{item.icon}</div>
-                <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-brand-500 text-white text-[9px] sm:text-xs font-bold flex items-center justify-center mx-auto -mt-3.5 sm:-mt-4 mb-1.5 sm:mb-2 relative">{item.step}</div>
-                <h4 className="font-bold text-[9px] sm:text-base text-slate-900 dark:text-white mb-0.5 sm:mb-1 leading-tight">{item.title}</h4>
-                <p className="text-[8px] sm:text-sm text-slate-500 dark:text-slate-400 leading-tight">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+       
+       
       </div>
     </div>
   )

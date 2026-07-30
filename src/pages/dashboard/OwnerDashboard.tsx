@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useVisitStore } from '../../store/visitStore'
 import { formatCurrency, cn } from '../../lib/utils'
 import { uploadToCloudinary } from '../../utils/cloudinary'
-
+import { usePersistedForm } from '../../hooks/usePersistedForm'
 import type { Property, PropertyType, RoomSharingConfig, FlatConfig, HostelConfig, PGConfig } from '../../types'
 
 export default function OwnerDashboard() {
@@ -28,8 +28,9 @@ export default function OwnerDashboard() {
   const [isUploading, setIsUploading] = useState(false)
   const [customAmenityInput, setCustomAmenityInput] = useState('')
 
-  // Form State
-  const [formData, setFormData] = useState({
+  // Form State — persisted so camera round-trips don't reset it
+  const PROPERTY_FORM_KEY = `property_form_${profile?.id || 'guest'}`
+  const { form: formData, setForm: setFormData, clearPersistedForm: clearPropertyForm } = usePersistedForm(PROPERTY_FORM_KEY, {
     title: '',
     description: '',
     owner_name: profile?.full_name || '',
@@ -114,6 +115,17 @@ export default function OwnerDashboard() {
       loadVisits()
     }
   }, [initialized, loadProperties, loadVisits])
+
+  // Automatically pre-fill owner name and phone from profile when creating a new property listing
+  useEffect(() => {
+    if (profile && !editingId) {
+      setFormData(prev => ({
+        ...prev,
+        owner_name: profile.full_name || prev.owner_name,
+        contact_phone: profile.phone || prev.contact_phone
+      }))
+    }
+  }, [profile, editingId])
 
   // We show properties associated with the active property owner
   const myProperties = profile?.id
@@ -453,6 +465,7 @@ export default function OwnerDashboard() {
     }
 
     // Reset Form
+    clearPropertyForm()
     setIsModalOpen(false)
     setEditingId(null)
     setFormStep(1)

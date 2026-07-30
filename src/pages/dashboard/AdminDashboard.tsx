@@ -161,17 +161,12 @@ export default function AdminDashboard() {
     setLoadingUsers(true)
     setFetchError(null)
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, role, phone, created_at, status')
-        .order('created_at', { ascending: false })
-      
-      if (error) {
-        console.error('fetchUsers error:', error)
-        setFetchError(`Database error: ${error.message} (code: ${error.code})`)
-        setUsers([])
+      const res = await gatewayFetch('/auth/users')
+      if (res.success && Array.isArray(res.data)) {
+        setUsers(res.data)
       } else {
-        setUsers(data || [])
+        setFetchError(res.error || 'Failed to fetch users')
+        setUsers([])
       }
     } catch (e: any) {
       console.error('fetchUsers exception:', e)
@@ -184,10 +179,15 @@ export default function AdminDashboard() {
   const fetchRoommates = async () => {
     setLoadingRoommates(true)
     try {
-      const { data, error } = await supabase.from('roommate_profiles').select('*').order('created_at', { ascending: false })
-      if (!error && data) setRoommates(data)
+      const res = await gatewayFetch('/community/roommates')
+      if (res.success && Array.isArray(res.data)) {
+        setRoommates(res.data)
+      } else {
+        setRoommates([])
+      }
     } catch (e) {
-      console.error(e)
+      console.error('fetchRoommates error:', e)
+      setRoommates([])
     } finally {
       setLoadingRoommates(false)
     }
@@ -196,10 +196,15 @@ export default function AdminDashboard() {
   const fetchCommunity = async () => {
     setLoadingCommunity(true)
     try {
-      const { data, error } = await supabase.from('community_posts').select('*').order('created_at', { ascending: false })
-      if (!error && data) setCommunity(data)
+      const res = await gatewayFetch('/community/posts')
+      if (res.success && Array.isArray(res.data)) {
+        setCommunity(res.data)
+      } else {
+        setCommunity([])
+      }
     } catch (e) {
-      console.error(e)
+      console.error('fetchCommunity error:', e)
+      setCommunity([])
     } finally {
       setLoadingCommunity(false)
     }
@@ -209,21 +214,13 @@ export default function AdminDashboard() {
     const confirmation = window.prompt('Type "delete" to confirm deletion:')
     if (confirmation !== 'delete') return
     
-    // Manually cascade delete to avoid FK constraint errors
-    await supabase.from('mess_plans').delete().eq('mess_id', id)
-    await supabase.from('student_subscriptions').delete().eq('mess_id', id)
-    await supabase.from('student_attendance').delete().eq('mess_id', id)
-    await supabase.from('reviews').delete().eq('target_id', id).eq('target_type', 'mess')
-    await supabase.from('mess_transactions').delete().eq('mess_id', id) // just in case
-    
-    const { data, error } = await supabase.from('messes').delete().eq('id', id).select()
-    if (error) {
-      alert(`Failed to delete mess: ${error.message}`)
-      console.error('Delete Mess Error:', error)
-    } else if (data && data.length === 0) {
-      alert(`Deletion silently blocked by Database Row Level Security (RLS) policies. You must update the Supabase 'messes' table RLS delete policy to allow admins.`)
+    const res = await gatewayFetch(`/messes/${id}`, { method: 'DELETE' })
+    if (!res.success) {
+      alert(`Failed to delete mess: ${res.error}`)
+      console.error('Delete Mess Error:', res.error)
     } else {
       setMesses(prev => prev.filter(item => item.id !== id))
+      invalidatePlatformCache()
     }
   }
 
@@ -231,51 +228,36 @@ export default function AdminDashboard() {
     const confirmation = window.prompt('Type "delete" to confirm deletion:')
     if (confirmation !== 'delete') return
     
-    // Manually cascade delete
-    await supabase.from('reviews').delete().eq('target_id', id).eq('target_type', 'property')
-    
-    const { data, error } = await supabase.from('properties').delete().eq('id', id).select()
-    if (error) {
-      alert(`Failed to delete property: ${error.message}`)
-      console.error('Delete Property Error:', error)
-    } else if (data && data.length === 0) {
-      alert(`Deletion blocked by Database RLS. Please update 'properties' table RLS delete policy.`)
+    const res = await gatewayFetch(`/properties/${id}`, { method: 'DELETE' })
+    if (!res.success) {
+      alert(`Failed to delete property: ${res.error}`)
+      console.error('Delete Property Error:', res.error)
     } else {
       setProperties(prev => prev.filter(item => item.id !== id))
+      invalidatePlatformCache()
     }
   }
 
   const handleDeleteRoommate = async (id: string) => {
     const confirmation = window.prompt('Type "delete" to confirm deletion:')
     if (confirmation !== 'delete') return
-    const { data, error } = await supabase.from('roommate_profiles').delete().eq('id', id).select()
-    if (error) {
-      alert(`Failed to delete roommate: ${error.message}`)
-    } else if (data && data.length === 0) {
-      alert(`Deletion blocked by Database RLS. Please update 'roommate_profiles' table RLS delete policy.`)
+    const res = await gatewayFetch(`/community/roommates/${id}`, { method: 'DELETE' })
+    if (!res.success) {
+      alert(`Failed to delete roommate: ${res.error}`)
     } else {
       setRoommates(prev => prev.filter(item => item.id !== id))
+      invalidatePlatformCache()
     }
   }
 
   const handleApproveRoommate = async (id: string, name: string) => {
-    let { data, error } = await supabase.from('roommate_profiles').update({ verified: true, rejected: false }).eq('id', id).select()
+    const res = await gatewayFetch(`/community/roommates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ verified: true, rejected: false })
+    })
 
-    if (error && error.message?.includes('rejected')) {
-      const res = await supabase.from('roommate_profiles').update({ verified: true }).eq('id', id).select()
-      data = res.data
-      error = res.error
-    }
-
-    if (error) {
-      if (error.message?.includes('verified') || error.message?.includes('schema cache')) {
-        alert(`Missing 'verified' column in Supabase 'roommate_profiles' table!\n\nPlease add the 'verified' column in Supabase SQL Editor:\nALTER TABLE public.roommate_profiles ADD COLUMN IF NOT EXISTS verified boolean DEFAULT false;`)
-      } else {
-        alert(`Failed to approve roommate profile: ${error.message}`)
-      }
-      console.error('Approve roommate error:', error)
-    } else if (!data || data.length === 0) {
-      alert(`Approval blocked by Database RLS. Please check Supabase policies on 'roommate_profiles' table.`)
+    if (!res.success) {
+      alert(`Failed to approve roommate profile: ${res.error}`)
     } else {
       setRoommates(prev => prev.map(r => r.id === id ? { ...r, verified: true, rejected: false } : r))
       invalidatePlatformCache()
@@ -284,23 +266,13 @@ export default function AdminDashboard() {
   }
 
   const handleRejectRoommate = async (id: string, name: string) => {
-    let { data, error } = await supabase.from('roommate_profiles').update({ verified: false, rejected: true }).eq('id', id).select()
+    const res = await gatewayFetch(`/community/roommates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ verified: false, rejected: true })
+    })
 
-    if (error && error.message?.includes('rejected')) {
-      const res = await supabase.from('roommate_profiles').update({ verified: false }).eq('id', id).select()
-      data = res.data
-      error = res.error
-    }
-
-    if (error) {
-      if (error.message?.includes('verified') || error.message?.includes('schema cache')) {
-        alert(`Missing 'verified' column in Supabase 'roommate_profiles' table!\n\nPlease add the 'verified' column in Supabase SQL Editor:\nALTER TABLE public.roommate_profiles ADD COLUMN IF NOT EXISTS verified boolean DEFAULT false;`)
-      } else {
-        alert(`Failed to reject roommate profile: ${error.message}`)
-      }
-      console.error('Reject roommate error:', error)
-    } else if (!data || data.length === 0) {
-      alert(`Rejection blocked by Database RLS. Please check Supabase policies on 'roommate_profiles' table.`)
+    if (!res.success) {
+      alert(`Failed to reject roommate profile: ${res.error}`)
     } else {
       setRoommates(prev => prev.map(r => r.id === id ? { ...r, verified: false, rejected: true } : r))
       invalidatePlatformCache()
@@ -311,34 +283,23 @@ export default function AdminDashboard() {
   const handleDeleteCommunity = async (id: string) => {
     const confirmation = window.prompt('Type "delete" to confirm deletion:')
     if (confirmation !== 'delete') return
-    const { data, error } = await supabase.from('community_posts').delete().eq('id', id).select()
-    if (error) {
-      alert(`Failed to delete post: ${error.message}`)
-    } else if (data && data.length === 0) {
-      alert(`Deletion blocked by Database RLS. Please update 'community_posts' table RLS delete policy.`)
+    const res = await gatewayFetch(`/community/posts/${id}`, { method: 'DELETE' })
+    if (!res.success) {
+      alert(`Failed to delete post: ${res.error}`)
     } else {
       setCommunity(prev => prev.filter(item => item.id !== id))
+      invalidatePlatformCache()
     }
   }
 
   const handleApproveCommunity = async (id: string, title: string) => {
-    let { data, error } = await supabase.from('community_posts').update({ verified: true, rejected: false }).eq('id', id).select()
-    
-    if (error && error.message?.includes('rejected')) {
-      const res = await supabase.from('community_posts').update({ verified: true }).eq('id', id).select()
-      data = res.data
-      error = res.error
-    }
+    const res = await gatewayFetch(`/community/posts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ verified: true, rejected: false })
+    })
 
-    if (error) {
-      if (error.message?.includes('verified') || error.message?.includes('schema cache')) {
-        alert(`Missing 'verified' column in Supabase 'community_posts' table!\n\nPlease run the SQL query from 'supabase/fix_community_posts_verified.sql' in your Supabase SQL Editor to add the column.`)
-      } else {
-        alert(`Failed to approve listing: ${error.message}`)
-      }
-      console.error('Approve post error:', error)
-    } else if (!data || data.length === 0) {
-      alert(`Approval blocked by Database RLS. Please check Supabase policies on 'community_posts' table.`)
+    if (!res.success) {
+      alert(`Failed to approve listing: ${res.error}`)
     } else {
       setCommunity(prev => prev.map(p => p.id === id ? { ...p, verified: true, rejected: false } : p))
       invalidatePlatformCache()
@@ -347,23 +308,13 @@ export default function AdminDashboard() {
   }
 
   const handleRejectCommunity = async (id: string, title: string) => {
-    let { data, error } = await supabase.from('community_posts').update({ verified: false, rejected: true }).eq('id', id).select()
-    
-    if (error && error.message?.includes('rejected')) {
-      const res = await supabase.from('community_posts').update({ verified: false }).eq('id', id).select()
-      data = res.data
-      error = res.error
-    }
+    const res = await gatewayFetch(`/community/posts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ verified: false, rejected: true })
+    })
 
-    if (error) {
-      if (error.message?.includes('verified') || error.message?.includes('schema cache')) {
-        alert(`Missing 'verified' column in Supabase 'community_posts' table!\n\nPlease run the SQL query from 'supabase/fix_community_posts_verified.sql' in your Supabase SQL Editor.`)
-      } else {
-        alert(`Failed to reject listing: ${error.message}`)
-      }
-      console.error('Reject post error:', error)
-    } else if (!data || data.length === 0) {
-      alert(`Rejection blocked by Database RLS. Please check Supabase policies on 'community_posts' table.`)
+    if (!res.success) {
+      alert(`Failed to reject listing: ${res.error}`)
     } else {
       setCommunity(prev => prev.map(p => p.id === id ? { ...p, verified: false, rejected: true } : p))
       invalidatePlatformCache()
@@ -374,9 +325,9 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (id: string) => {
     const confirmation = window.prompt('Type "delete" to confirm user deletion. Note: This deletes the profile data.')
     if (confirmation !== 'delete') return
-    const { error } = await supabase.from('profiles').delete().eq('id', id)
-    if (error) {
-      alert(`Failed to delete user: ${error.message}`)
+    const res = await gatewayFetch(`/auth/users/${id}`, { method: 'DELETE' })
+    if (!res.success) {
+      alert(`Failed to delete user: ${res.error || 'Server error'}`)
     } else {
       setUsers(prev => prev.filter(u => u.id !== id))
       setSelectedUser(null)
@@ -406,9 +357,16 @@ export default function AdminDashboard() {
     setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, status: newStatus } : u))
     setSelectedUser(prev => prev ? { ...prev, status: newStatus } : null)
     
-    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', selectedUser.id)
-    if (error) {
-      alert(`Failed to update user status: ${error.message}`)
+    const res = await gatewayFetch(`/auth/users/${selectedUser.id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: newStatus })
+    })
+    
+    if (!res.success) {
+      alert(`Failed to update user status: ${res.error || 'Server error'}`)
+      // Revert UI status
+      setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, status: isSuspended ? 'suspended' : 'active' } : u))
+      setSelectedUser(prev => prev ? { ...prev, status: isSuspended ? 'suspended' : 'active' } : null)
     } else {
       // Send notification to the user
       const notifTitle = isSuspended ? 'Account Reactivated' : 'Account Suspended'
@@ -417,15 +375,19 @@ export default function AdminDashboard() {
         : 'Your account has been suspended by the administrator. You will not be able to log in until it is reactivated.'
       const notifType = isSuspended ? 'success' : 'error'
       
-      await supabase.from('app_notifications').insert([{
-        user_id: selectedUser.id,
-        title: notifTitle,
-        message: notifMessage,
-        type: notifType,
-        read: false
-      }])
+      try {
+        await supabase.from('app_notifications').insert([{
+          user_id: selectedUser.id,
+          title: notifTitle,
+          message: notifMessage,
+          type: notifType,
+          read: false
+        }])
+      } catch (err) {
+        console.warn('Failed to insert app notification:', err)
+      }
 
-      alert(`User account successfully ${isSuspended ? 'reactivated' : 'suspended'} and notification sent!`)
+      alert(`User account successfully ${isSuspended ? 'reactivated' : 'suspended'}!`)
     }
   }
 

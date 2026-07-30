@@ -24,6 +24,7 @@ export interface IMess extends Document {
   review_count: number;
   photos: string[];
   meal_types: string[];
+  menu_card?: any[] | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -53,6 +54,7 @@ const MessSchema: Schema = new Schema(
     review_count: { type: Number, default: 0 },
     photos: { type: [String], default: [] },
     meal_types: { type: [String], default: [] },
+    menu_card: { type: [Schema.Types.Mixed], default: [] },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
@@ -63,7 +65,4 @@ const MessSchema: Schema = new Schema(
 MessSchema.index({ city: 1, verified: 1 });
 MessSchema.index({ owner_id: 1 });
 
-import { getDBConnection } from '../shared/db';
-
-export const MessModel = getDBConnection('MONGODB_MESS_URI').model<IMess>('Mess', MessSchema);
-export default MessModel;
+export default mongoose.model<IMess>('Mess', MessSchema);

@@ -11,6 +11,11 @@ export interface IUser extends Document {
   branch?: string;
   gender?: string;
   bio?: string;
+  address?: string;
+  email_notifications?: boolean;
+  push_notifications?: boolean;
+  is_profile_completed?: boolean;
+  status?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -27,16 +32,15 @@ const UserSchema: Schema = new Schema(
     branch: { type: String, default: '' },
     gender: { type: String, default: '' },
     bio: { type: String, default: '' },
+    address: { type: String, default: '' },
+    email_notifications: { type: Boolean, default: true },
+    push_notifications: { type: Boolean, default: false },
+    is_profile_completed: { type: Boolean, default: false },
+    status: { type: String, enum: ['active', 'suspended'], default: 'active' }
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
   }
 );
 
-// Optimize querying by email (unique index is created automatically, but explicitly defined here)
-UserSchema.index({ email: 1 });
-
-import { getDBConnection } from '../shared/db';
-
-export const UserModel = getDBConnection('MONGODB_PROPERTY_URI').model<IUser>('User', UserSchema);
-export default UserModel;
+export default mongoose.model<IUser>('User', UserSchema);

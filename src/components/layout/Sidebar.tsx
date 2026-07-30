@@ -2,7 +2,7 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  LayoutDashboard, Home, Building2, Utensils, Users, MessageCircle,
+  LayoutDashboard, Home, Building2, Utensils, Users, MessageCircle, User,
   Bell, Heart, Search, Settings, BarChart2, QrCode, Calendar,
   CreditCard, FileText, Shield, LogOut, ChevronRight, Star, X, ShoppingBag
 } from 'lucide-react'
@@ -17,14 +17,14 @@ const studentLinks = [
   { label: 'My Visits', path: '/dashboard/student/visits', icon: Calendar },
   { label: 'Favorites', path: '/favorites', icon: Heart },
   { label: 'Reviews', path: '/dashboard/student/reviews', icon: Star },
-  { label: 'Settings', path: '/dashboard/settings', icon: Settings },
+  { label: 'Profile', path: '/dashboard/settings', icon: User },
 ]
 
 const messOwnerLinks = [
   { label: 'Overview', path: '/dashboard/mess', icon: LayoutDashboard },
   { label: 'Menu Card Manager', path: '/dashboard/mess/menucard', icon: FileText },
   { label: 'Daily Menu Manager', path: '/dashboard/mess/menu', icon: Utensils },
-  { label: 'Settings', path: '/dashboard/settings', icon: Settings },
+  { label: 'Profile', path: '/dashboard/settings', icon: User },
 ]
 
 const adminLinks = [
@@ -35,7 +35,7 @@ const adminLinks = [
   { label: 'Roommates', path: '/dashboard/admin/roommates', icon: Users },
   { label: 'Marketplace Posts', path: '/dashboard/admin/community', icon: ShoppingBag },
   { label: 'Analytics', path: '/dashboard/admin/analytics', icon: BarChart2 },
-  { label: 'Settings', path: '/dashboard/settings', icon: Settings },
+  { label: 'Profile', path: '/dashboard/settings', icon: User },
 ]
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -48,7 +48,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     { label: 'Overview', path: '/dashboard/owner', icon: LayoutDashboard },
     { label: 'Visit Requests', path: '/dashboard/owner/visits', icon: Calendar, badge: pendingVisitsCount > 0 ? pendingVisitsCount : undefined },
     { label: 'My Listings', path: '/dashboard/owner/listings', icon: Building2 },
-    { label: 'Settings', path: '/dashboard/settings', icon: Settings },
+    { label: 'Profile', path: '/dashboard/settings', icon: User },
   ]
 
   const links = profile?.role === 'student' ? studentLinks

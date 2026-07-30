@@ -9,7 +9,8 @@ import User from './User';
 
 dotenv.config();
 
-
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 const PORT = process.env.AUTH_SERVICE_PORT || 5001;
@@ -28,7 +29,7 @@ app.get('/health', (req: Request, res: Response) => {
 // Google Authentication verification route
 app.post('/api/auth/google', async (req: Request, res: Response) => {
   try {
-    const { credential, role } = req.body;
+    const { credential, role, flow } = req.body;
     if (!credential) {
       return res.status(400).json({ success: false, error: 'Credential token is required' });
     }
@@ -46,14 +47,21 @@ app.post('/api/auth/google', async (req: Request, res: Response) => {
 
     // Find or create user in MongoDB
     let user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (user && user.status === 'suspended') {
+      return res.status(403).json({ success: false, error: 'Your account has been suspended by the administrator.' });
+    }
     if (!user) {
+      if (flow === 'signin') {
+        return res.status(400).json({ success: false, error: 'Account does not exist. Please sign up.' });
+      }
+
       user = new User({
-        id: 'usr_' + Date.now(),
         email: email.trim().toLowerCase(),
         full_name: name || 'Google User',
         avatar_url: picture || '',
         role: role || 'student', // Initial role chosen by user
-        phone: ''
+        phone: '',
+        is_profile_completed: false
       });
       await user.save();
     }
@@ -137,12 +145,16 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     const user = await User.findOne({ email: email.trim().toLowerCase() });
 
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, error: 'Account does not exist. Please sign up.' });
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({ success: false, error: 'Your account has been suspended by the administrator.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password || '');
     if (!isMatch) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, error: 'Incorrect password. Please try again.' });
     }
 
     const token = jwt.sign(
@@ -234,6 +246,59 @@ app.put('/api/auth/profile', async (req: Request, res: Response) => {
   }
 });
 
+// Get all users (Admin only)
+app.get('/api/auth/users', async (req: Request, res: Response) => {
+  try {
+    const users = await User.find().sort({ created_at: -1 });
+    const mappedUsers = users.map(user => {
+      const userObj = user.toObject();
+      delete userObj.password;
+      return { ...userObj, id: user._id.toString() };
+    });
+    res.json({ success: true, data: mappedUsers });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Failed to fetch users' });
+  }
+});
+
+// Suspend/Reactivate user (Admin action)
+app.put('/api/auth/users/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $set: { status } },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    const userObj = updatedUser.toObject();
+    delete userObj.password;
+    res.json({ success: true, data: { ...userObj, id: updatedUser._id.toString() } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Failed to update status' });
+  }
+});
+
+// Delete user (Admin action)
+app.delete('/api/auth/users/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deletedUser = await User.findByIdAndDelete(id);
+    if (!deletedUser) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Failed to delete user' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`[Auth Service] Running on port ${PORT}`);
 });
+// Force reload index.ts for reverted MONGODB_URI to test database

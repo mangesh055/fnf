@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Star, Phone, CheckCircle, ChevronLeft, Navigation2, Clock, ShieldCheck, ExternalLink, User, Utensils, Image, MessageSquare, Info, Trash2, X, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { fetchMesses, fetchMessPlans, fetchReviews, invalidatePlatformCache } from '../lib/platformData'
+import { gatewayFetch } from '../lib/apiGateway'
 import { formatCurrency, mealTypeLabels, messStatusConfig, computeMessStatus, getMessServiceStatusDetails } from '../lib/utils'
 import { cn } from '../lib/utils'
 import type { MealType } from '../types'
@@ -47,29 +48,34 @@ export default function MessDetailPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        const todayStr = new Date().toISOString().split('T')[0]
+
+        // Fire mess list and reviews in parallel
         const [messes, reviews] = await Promise.all([
-          fetchMesses(true),
+          fetchMesses(),
           id ? fetchReviews({ messId: id }) : Promise.resolve([]),
         ])
 
         const targetMess = messes?.find((item) => item.id === id) || messes?.[0] || null
         setMess(targetMess)
         setReviewsList(reviews)
+        setMenuCard(targetMess?.menu_card || [])
 
         if (targetMess) {
-          const plans = await fetchMessPlans(targetMess.id)
+          // Fire plans and today's menu in parallel
+          const [plans, menuRes] = await Promise.all([
+            fetchMessPlans(targetMess.id),
+            gatewayFetch(`/messes/menus?owner_id=${targetMess.owner_id}&date=${todayStr}`)
+          ])
+
           setDisplayPlans(plans)
-          setMenuCard(targetMess.menu_card || [])
 
-          const todayStr = new Date().toISOString().split('T')[0]
-          const { data: menuData } = await supabase
-            .from('mess_menus')
-            .select('*')
-            .eq('owner_id', targetMess.owner_id)
-            .eq('date', todayStr)
-            .maybeSingle()
-
+          const menuData = (menuRes.success && Array.isArray(menuRes.data) && menuRes.data.length > 0) ? menuRes.data[0] : null
+          console.log('[MessDetailPage] menuRes:', menuRes)
+          console.log('[MessDetailPage] menuData:', menuData)
+          console.log('[MessDetailPage] todayStr:', todayStr)
           if (menuData) {
+            console.log('[MessDetailPage] Setting todayMenu state with menuData')
             setTodayMenu({
               breakfast: menuData.breakfast || [],
               lunch: menuData.lunch || [],
@@ -84,13 +90,14 @@ export default function MessDetailPage() {
             setCategoryMenuImages(catImgs)
             setMenuImageUrl(menuData.image_url || null)
           } else {
+            console.log('[MessDetailPage] No menuData found for today. Resetting state.')
             setTodayMenu({ breakfast: [], lunch: [], dinner: [], snack: [] })
             setCategoryMenuImages({})
             setMenuImageUrl(null)
           }
         }
       } catch (error) {
-        console.error('Failed to load mess detail from Supabase:', error)
+        console.error('Failed to load mess detail:', error)
         setMess(null)
         setReviewsList([])
         setDisplayPlans([])
@@ -117,9 +124,19 @@ export default function MessDetailPage() {
     }
 
     void (async () => {
-      const { error } = await supabase.from('reviews').insert([newR])
-      if (error) {
-        console.error('Failed to save mess review to Supabase:', error)
+      const res = await gatewayFetch('/properties/reviews', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: newR.id,
+          mess_id: newR.mess_id,
+          reviewer_id: newR.reviewer_id,
+          reviewer_name: newR.full_name,
+          rating: newR.rating,
+          comment: newR.comment
+        })
+      })
+      if (!res.success) {
+        console.error('Failed to save mess review:', res.error)
         return
       }
 
@@ -138,9 +155,9 @@ export default function MessDetailPage() {
 
   const handleDeleteReview = async (reviewId: string) => {
     if (!window.confirm('Delete this review?')) return
-    const { error } = await supabase.from('reviews').delete().eq('id', reviewId)
-    if (error) {
-      console.error('Failed to delete review', error)
+    const res = await gatewayFetch(`/properties/reviews/${reviewId}`, { method: 'DELETE' })
+    if (!res.success) {
+      console.error('Failed to delete review', res.error)
       return
     }
     const newReviewsList = reviewsList.filter(r => r.id !== reviewId)

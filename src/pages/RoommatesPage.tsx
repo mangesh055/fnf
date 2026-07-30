@@ -9,6 +9,8 @@ import { fetchRoommateProfiles, invalidatePlatformCache } from '../lib/platformD
 import { supabase } from '../lib/supabase'
 import { gatewayFetch } from '../lib/apiGateway'
 import { uploadToCloudinary } from '../utils/cloudinary'
+import { usePersistedForm } from '../hooks/usePersistedForm'
+import ContactRoommateModal from '../components/property/ContactRoommateModal'
 
 type RoommateRow = RoommateProfile & { full_name?: string | null; email?: string | null }
 
@@ -26,9 +28,11 @@ export default function RoommatesPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [customAmenity, setCustomAmenity] = useState('')
   const [isUploadingVideo, setIsUploadingVideo] = useState(false)
+  const [selectedRoommateForContact, setSelectedRoommateForContact] = useState<RoommateRow | null>(null)
 
-  // Form Fields for new Roommate seeker
-  const [form, setForm] = useState({
+  // Form Fields for new Roommate seeker — persisted so camera round-trips don't clear it
+  const ROOMMATE_FORM_KEY = `roommate_form_${profile?.id || 'guest'}`
+  const { form, setForm, clearPersistedForm } = usePersistedForm(ROOMMATE_FORM_KEY, {
     budget_min: '4000',
     budget_max: '8000',
     deposit: '',
@@ -94,6 +98,20 @@ export default function RoommatesPage() {
     load()
   }, [profile])
 
+  // Automatically pre-fill form fields from profile when creating a new roommate post
+  useEffect(() => {
+    if (profile && !isEditing) {
+      setForm(prev => ({
+        ...prev,
+        college: profile.college || prev.college,
+        branch: profile.branch || prev.branch,
+        gender: profile.gender || prev.gender,
+        phone: profile.phone || prev.phone,
+        whatsapp: profile.phone || prev.whatsapp,
+      }))
+    }
+  }, [profile, isEditing])
+
   const handleCreateProfile = (e: React.FormEvent) => {
     e.preventDefault()
     if (!profile) {
@@ -132,8 +150,10 @@ export default function RoommatesPage() {
     }
 
     void (async () => {
-      const res = await gatewayFetch('/community/roommates', {
-        method: 'POST',
+      const url = isEditing && myProfile ? `/community/roommates/${myProfile.id}` : '/community/roommates'
+      const method = isEditing ? 'PUT' : 'POST'
+      const res = await gatewayFetch(url, {
+        method,
         body: JSON.stringify(newProfile)
       })
       const error = res.success ? null : { message: res.error }
@@ -148,6 +168,7 @@ export default function RoommatesPage() {
         return [newProfile, ...filtered]
       })
       invalidatePlatformCache()
+      clearPersistedForm()
       setShowForm(false)
       setIsEditing(false)
     })()
@@ -511,11 +532,11 @@ export default function RoommatesPage() {
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            navigate(`/roommates/${item.id}`)
+                            setSelectedRoommateForContact(item)
                           }}
                           className="group/btn px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold text-xs shadow-md shadow-red-500/25 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                         >
-                          <MessageSquare className="w-3.5 h-3.5 group-hover/btn:-rotate-12 transition-transform duration-200" /> Connect
+                          <MessageSquare className="w-3.5 h-3.5 group-hover/btn:-rotate-12 transition-transform duration-200" /> Contact
                         </motion.button>
                       </div>
                     </div>
@@ -531,13 +552,13 @@ export default function RoommatesPage() {
       <AnimatePresence>
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForm(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { clearPersistedForm(); setShowForm(false) }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, y: 15, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 15, opacity: 0 }}
               className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-glass overflow-hidden z-10 max-h-[90vh] flex flex-col">
               
               <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
                 <h3 className="text-xl font-display font-bold text-slate-900 dark:text-white">📝 {isEditing ? 'Edit Your Room Details' : 'Post Your Room Details'}</h3>
-                <button onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400"><X className="w-5 h-5" /></button>
+                <button onClick={() => { clearPersistedForm(); setShowForm(false) }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400"><X className="w-5 h-5" /></button>
               </div>
 
               <form onSubmit={handleCreateProfile} className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -737,6 +758,12 @@ export default function RoommatesPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <ContactRoommateModal 
+        roommate={selectedRoommateForContact} 
+        isOpen={!!selectedRoommateForContact} 
+        onClose={() => setSelectedRoommateForContact(null)} 
+      />
     </div>
   )
 }

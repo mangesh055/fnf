@@ -150,10 +150,10 @@ export default function Navbar({ darkMode, toggleDarkMode }: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-1.5 sm:gap-2.5 group shrink-0">
-            <img 
-              src={logoImg} 
-              alt="FlatsNFood Logo" 
-              className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-xl group-hover:scale-105 transition-transform" 
+            <img
+              src={logoImg}
+              alt="FlatsNFood Logo"
+              className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-xl group-hover:scale-105 transition-transform"
             />
             <span className="text-base sm:text-xl font-display font-bold whitespace-nowrap">
               <span className="text-slate-900 dark:text-white">Flats</span>
@@ -267,7 +267,7 @@ export default function Navbar({ darkMode, toggleDarkMode }: NavbarProps) {
                             </Link>
                           )}
 
-                          <Link to="/dashboard/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm text-slate-700 dark:text-slate-300 transition-colors">
+                          <Link to="/dashboard/settings" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm text-slate-700 dark:text-slate-300 transition-colors">
                             <User className="w-4 h-4 text-brand-500" /> Profile
                           </Link>
                           {profile.role === 'student' && (
@@ -275,9 +275,6 @@ export default function Navbar({ darkMode, toggleDarkMode }: NavbarProps) {
                               <Building2 className="w-4 h-4 text-brand-500" /> Property Post Request
                             </Link>
                           )}
-                          <Link to="/dashboard/settings" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm text-slate-700 dark:text-slate-300 transition-colors">
-                            <Settings className="w-4 h-4 text-brand-500" /> Settings
-                          </Link>
                           <button
                             type="button"
                             onClick={() => {

@@ -27,7 +27,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void
   signUp: (email: string, password: string, role: UserRole, name: string, phone: string) => Promise<{ success: boolean; error?: string }>
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signInWithGoogle: (credential: string, role?: UserRole) => Promise<{ success: boolean; error?: string }>
+  signInWithGoogle: (credential: string, role?: UserRole, flow?: string) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   fetchProfile: (userId: string) => Promise<void>
   updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>
@@ -56,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
       if (res.success && res.data) {
         const { user, token } = res.data;
         localStorage.setItem('campusnest_jwt_token', token)
+        sessionStorage.removeItem('admin_verified')
         
         const mappedUser: User = {
           id: user.id,
@@ -100,6 +101,7 @@ export const useAuthStore = create<AuthState>()(
       if (res.success && res.data) {
         const { user, token } = res.data;
         localStorage.setItem('campusnest_jwt_token', token)
+        sessionStorage.removeItem('admin_verified')
 
         const mappedUser: User = {
           id: user.id,
@@ -134,16 +136,17 @@ export const useAuthStore = create<AuthState>()(
       }
     },
 
-    signInWithGoogle: async (credential, role) => {
+    signInWithGoogle: async (credential, role, flow) => {
       set({ loading: true })
       const res = await gatewayFetch('/auth/google', {
         method: 'POST',
-        body: JSON.stringify({ credential, role })
+        body: JSON.stringify({ credential, role, flow })
       })
 
       if (res.success && res.data) {
         const { token, profile: userProfile } = res.data;
         localStorage.setItem('campusnest_jwt_token', token)
+        sessionStorage.removeItem('admin_verified')
 
         const mappedUser: User = {
           id: userProfile.id,
@@ -260,6 +263,7 @@ export const useAuthStore = create<AuthState>()(
 
     signOut: async () => {
       localStorage.removeItem('campusnest_jwt_token')
+      sessionStorage.removeItem('admin_verified')
       set({ user: null, session: null, profile: null, initialized: true, loading: false })
     },
   })

@@ -7,6 +7,7 @@ import StudentPropertyRequestView from '../../components/StudentPropertyRequestV
 import { useAuthStore } from '../../store/authStore'
 import { useVisitStore } from '../../store/visitStore'
 import { supabase } from '../../lib/supabase'
+import { gatewayFetch } from '../../lib/apiGateway'
 import { cn, formatCurrency, formatDate, getRemainingDays } from '../../lib/utils'
 import { X, Clock, Edit2, Trash2 } from 'lucide-react'
 
@@ -139,7 +140,7 @@ export default function StudentDashboard() {
       const todayStr = new Date().toISOString().split('T')[0]
       const [plansResult, menuResult] = await Promise.all([
         supabase.from('mess_plans').select('*').eq('mess_id', selectedMess.id).eq('active', true).order('price', { ascending: true }),
-        supabase.from('mess_menus').select('breakfast, lunch, dinner, snack, breakfast_image, lunch_image, dinner_image, snack_image, category_images, image_url, date').eq('owner_id', selectedMess.owner_id).order('date', { ascending: false }).limit(1),
+        gatewayFetch(`/messes/menus?owner_id=${selectedMess.owner_id}`),
       ])
       const planRows = (plansResult.data || []) as PlanRow[]
       setPlans(planRows)
@@ -151,7 +152,9 @@ export default function StudentDashboard() {
       }
       
       setSelectedPlan(initialPlan)
-      const fetchedMenu = (menuResult.data || [])[0] as MenuRow | undefined
+      const fetchedMenu = (menuResult.success && Array.isArray(menuResult.data) && menuResult.data.length > 0) 
+        ? menuResult.data[0] as MenuRow 
+        : undefined
       if (fetchedMenu && fetchedMenu.date === todayStr) {
         setMenu(fetchedMenu)
       } else {

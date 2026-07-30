@@ -121,19 +121,20 @@ export async function fetchMessPlans(messId: string) {
     .eq('mess_id', messId)
     .order('created_at', { ascending: true })
 
-  if (error) throw error
+  if (error) return []
   return (data || []) as MessPlan[]
 }
 
 export async function fetchReviews(options: { propertyId?: string; messId?: string }) {
-  let query = supabase.from('reviews').select('*').order('created_at', { ascending: false })
+  const params = new URLSearchParams()
+  if (options.propertyId) params.append('propertyId', options.propertyId)
+  if (options.messId) params.append('messId', options.messId)
 
-  if (options.propertyId) query = query.eq('property_id', options.propertyId)
-  if (options.messId) query = query.eq('mess_id', options.messId)
-
-  const { data, error } = await query
-  if (error) throw error
-  return (data || []) as Review[]
+  const res = await gatewayFetch<Review[]>(`/properties/reviews?${params.toString()}`)
+  if (res.success && Array.isArray(res.data)) {
+    return res.data
+  }
+  return []
 }
 
 export async function fetchCommunityComments(postId?: string) {

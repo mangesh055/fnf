@@ -4,10 +4,12 @@ import dotenv from 'dotenv';
 import { connectDB } from '../shared/db';
 import Post from './Post';
 import Roommate from './Roommate';
+import User from '../auth-service/User';
 
 dotenv.config();
 
-
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 const PORT = process.env.COMMUNITY_SERVICE_PORT || 5004;
@@ -24,7 +26,19 @@ app.get('/health', (req: Request, res: Response) => {
 app.get('/api/community/posts', async (req: Request, res: Response) => {
   try {
     const posts = await Post.find().sort({ created_at: -1 });
-    res.json({ success: true, data: posts });
+    const populated = await Promise.all(posts.map(async (p) => {
+      const obj = p.toObject();
+      if (!obj.full_name || obj.full_name === '') {
+        const u = await User.findById(obj.author_id);
+        if (u) {
+          obj.full_name = u.full_name;
+          obj.email = u.email;
+          obj.phone = u.phone;
+        }
+      }
+      return obj;
+    }));
+    res.json({ success: true, data: populated });
   } catch (error: any) {
     console.error('[Get Posts Error]:', error);
     res.status(500).json({ success: false, error: error.message || 'Failed to retrieve posts' });
@@ -38,7 +52,16 @@ app.get('/api/community/posts/:id', async (req: Request, res: Response) => {
     if (!post) {
       return res.status(404).json({ success: false, error: 'Post not found' });
     }
-    res.json({ success: true, data: post });
+    const obj = post.toObject();
+    if (!obj.full_name || obj.full_name === '') {
+      const u = await User.findById(obj.author_id);
+      if (u) {
+        obj.full_name = u.full_name;
+        obj.email = u.email;
+        obj.phone = u.phone;
+      }
+    }
+    res.json({ success: true, data: obj });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Failed to retrieve post' });
   }
@@ -101,7 +124,22 @@ app.delete('/api/community/posts/:id', async (req: Request, res: Response) => {
 app.get('/api/community/roommates', async (req: Request, res: Response) => {
   try {
     const roommates = await Roommate.find().sort({ created_at: -1 });
-    res.json({ success: true, data: roommates });
+    
+    // Dynamically populate full_name, email, and phone from User collection if missing
+    const populated = await Promise.all(roommates.map(async (r) => {
+      const obj = r.toObject();
+      if (!obj.full_name || obj.full_name === '') {
+        const u = await User.findById(obj.student_id);
+        if (u) {
+          obj.full_name = u.full_name;
+          obj.email = u.email;
+          obj.phone = u.phone;
+        }
+      }
+      return obj;
+    }));
+
+    res.json({ success: true, data: populated });
   } catch (error: any) {
     console.error('[Get Roommates Error]:', error);
     res.status(500).json({ success: false, error: error.message || 'Failed to retrieve roommates' });
@@ -115,7 +153,19 @@ app.get('/api/community/roommates/:id', async (req: Request, res: Response) => {
     if (!roommate) {
       return res.status(404).json({ success: false, error: 'Roommate profile not found' });
     }
-    res.json({ success: true, data: roommate });
+
+    // Populate full_name, email, and phone from User collection if missing
+    const obj = roommate.toObject();
+    if (!obj.full_name || obj.full_name === '') {
+      const u = await User.findById(obj.student_id);
+      if (u) {
+        obj.full_name = u.full_name;
+        obj.email = u.email;
+        obj.phone = u.phone;
+      }
+    }
+
+    res.json({ success: true, data: obj });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Failed to retrieve roommate profile' });
   }

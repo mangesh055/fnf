@@ -73,7 +73,7 @@ function DashboardRedirect() {
 export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme')
-    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    return saved === 'dark'
   })
 
   useEffect(() => {

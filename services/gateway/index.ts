@@ -6,9 +6,19 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.GATEWAY_PORT || 5000;
+const PORT = process.env.PORT || process.env.GATEWAY_PORT || 5000;
 
 app.use(cors());
+
+// Root endpoint
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    name: 'FlatsNFood Microservices API Gateway',
+    status: 'online',
+    healthCheck: '/health',
+    endpoints: ['/api/auth', '/api/properties', '/api/messes', '/api/visits', '/api/community']
+  });
+});
 
 // Health check endpoint for the Gateway
 app.get('/health', (req: Request, res: Response) => {

@@ -13,7 +13,8 @@
     "services:property": "npx tsx watch services/property-service/index.ts",
     "services:visit": "npx tsx watch services/visit-service/index.ts",
     "services:community": "npx tsx watch services/community-service/index.ts",
-    "dev:all": "concurrently \"npm run services:gateway\" \"npm run services:auth\" \"npm run services:property\" \"npm run services:visit\" \"npm run services:community\" \"npm run dev\""
+    "dev:all": "concurrently \"npm run services:gateway\" \"npm run services:auth\" \"npm run services:property\" \"npm run services:visit\" \"npm run services:community\" \"npm run dev\"",
+    "start:backend": "npx tsx services/production-server.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1091.0",

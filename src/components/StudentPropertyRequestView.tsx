@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 import { uploadToCloudinary } from '../utils/cloudinary'
 import type { PropertyType, RoomSharingConfig, FlatConfig, HostelConfig } from '../types'
+import { gatewayFetch } from '../lib/apiGateway'
 //fs
 export default function StudentPropertyRequestView() {
   const { profile } = useAuthStore()
@@ -19,13 +20,12 @@ export default function StudentPropertyRequestView() {
   const fetchRequests = async () => {
     if (!profile?.id) return
     setIsLoadingRequests(true)
-    const { data } = await supabase
-      .from('properties')
-      .select('*')
-      .eq('owner_id', profile.id)
-      .order('created_at', { ascending: false })
-    
-    if (data) setRequests(data)
+    const res = await gatewayFetch(`/properties?owner_id=${profile.id}`)
+    if (res.success && Array.isArray(res.data)) {
+      setRequests(res.data)
+    } else {
+      setRequests([])
+    }
     setIsLoadingRequests(false)
   }
 
@@ -236,9 +236,9 @@ export default function StudentPropertyRequestView() {
   const handleDeleteRequest = async (reqId: string, reqTitle: string) => {
     if (!window.confirm(`Are you sure you want to delete the property request for "${reqTitle}"?`)) return
 
-    const { error } = await supabase.from('properties').delete().eq('id', reqId)
-    if (error) {
-      alert('Failed to delete request: ' + error.message)
+    const res = await gatewayFetch(`/properties/${reqId}`, { method: 'DELETE' })
+    if (!res.success) {
+      alert('Failed to delete request: ' + (res.error || 'Server error'))
     } else {
       alert('Property request deleted successfully!')
       fetchRequests()
@@ -289,13 +289,13 @@ export default function StudentPropertyRequestView() {
 
     if (editingRequestId) {
       // UPDATE Existing Request
-      const { error } = await supabase
-        .from('properties')
-        .update(propertyData)
-        .eq('id', editingRequestId)
+      const res = await gatewayFetch(`/properties/${editingRequestId}`, {
+        method: 'PUT',
+        body: JSON.stringify(propertyData)
+      })
 
-      if (error) {
-        alert('Failed to update property request: ' + error.message)
+      if (!res.success) {
+        alert('Failed to update property request: ' + (res.error || 'Server error'))
         return
       }
 
@@ -310,17 +310,13 @@ export default function StudentPropertyRequestView() {
       propertyData.availability = true
       propertyData.featured = false
 
-      let { error } = await supabase.from('properties').insert([propertyData])
+      const res = await gatewayFetch('/properties', {
+        method: 'POST',
+        body: JSON.stringify(propertyData)
+      })
 
-      if (error && (error.message.includes('is_student_request') || error.message.includes('column'))) {
-        const fallbackData = { ...propertyData }
-        delete fallbackData.is_student_request
-        const retryResult = await supabase.from('properties').insert([fallbackData])
-        error = retryResult.error
-      }
-
-      if (error) {
-        alert('Failed to submit property request: ' + error.message)
+      if (!res.success) {
+        alert('Failed to submit property request: ' + (res.error || 'Server error'))
         return
       }
 

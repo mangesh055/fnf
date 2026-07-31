@@ -90,13 +90,28 @@ export default function RoommateDetailPage() {
     )
   }
 
-  let descObj = {
+  let descObj: {
+    text: string
+    deposit: number
+    total_roommates: number
+    current_roommates: number
+    spots_needed: number
+    location: string
+    amenities: string[]
+    images: string[]
+    video_url: string
+    phone: string
+    whatsapp: string
+    [key: string]: any
+  } = {
     text: roommate.description,
     deposit: 0,
-    total_roommates: 1,
+    total_roommates: 2,
+    current_roommates: 1,
+    spots_needed: 1,
     location: '',
-    amenities: [] as string[],
-    images: [] as string[],
+    amenities: [],
+    images: [],
     video_url: '',
     phone: '',
     whatsapp: ''
@@ -105,6 +120,16 @@ export default function RoommateDetailPage() {
     const parsed = JSON.parse(roommate.description || '{}')
     if (parsed.text !== undefined) descObj = { ...descObj, ...parsed }
   } catch (e) { }
+
+  // Compute spots_needed dynamically when not explicitly stored
+  // If the JSON had spots_needed, use it. Otherwise derive from total - current.
+  if (!descObj.spots_needed || descObj.spots_needed === 1) {
+    const derived = Math.max(1, descObj.total_roommates - descObj.current_roommates)
+    // Only override if derived is meaningfully different (avoids overriding explicit '1')
+    if (descObj.total_roommates > 2) {
+      descObj.spots_needed = derived
+    }
+  }
 
   const ownerName = (roommate as any).full_name || 'Anonymous Student'
   const displayPhone = descObj.phone || '9876543210'
@@ -216,23 +241,18 @@ export default function RoommateDetailPage() {
                   <h1 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white">
                     {ownerName}
                   </h1>
-                  <p className="text-sm font-semibold text-brand-600 dark:text-brand-400 mt-1">
-                    🎓 {roommate.college} {roommate.branch && `• ${roommate.branch}`}
-                  </p>
+                  {(roommate.college || roommate.branch) && (
+                    <p className="text-sm font-semibold text-brand-600 dark:text-brand-400 mt-1">
+                      🎓 {[roommate.college, roommate.branch].filter(Boolean).join(' • ')}
+                    </p>
+                  )}
                   <div className="flex items-center gap-1.5 mt-2 text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
                     <MapPin className="w-4 h-4 text-red-500 shrink-0" />
                     <span>{descObj.location || `${roommate.city}, India`}</span>
                   </div>
                 </div>
 
-                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 rounded-xl border border-amber-200 dark:border-amber-800">
-                    <Star className="w-4 h-4 star-filled" />
-                    <span className="font-bold text-slate-900 dark:text-white text-sm">4.9</span>
-                    <span className="text-slate-400 text-xs">(Top Match)</span>
-                  </div>
-                
-                </div>
+
               </div>
 
               {/* 4-Stat Metric Box (Matching PropertyDetailPage) */}
@@ -251,14 +271,27 @@ export default function RoommateDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-semibold uppercase mb-1">Roommates</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">
-                    {descObj.total_roommates} {descObj.total_roommates > 1 ? 'People' : 'Person'}
-                  </p>
-                </div>
-                <div>
                   <p className="text-xs text-slate-400 font-semibold uppercase mb-1">Status</p>
                   <span className="badge badge-green">✓ Available</span>
+                </div>
+              </div>
+
+              {/* Occupancy Breakdown Card */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-brand-50 to-indigo-50 dark:from-brand-950/30 dark:to-indigo-950/20 border border-brand-100 dark:border-brand-900/40">
+                <h4 className="text-xs font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wide mb-3">🏠 Room Occupancy</h4>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="bg-white dark:bg-slate-800 rounded-xl p-3 shadow-sm">
+                    <p className="text-xl font-extrabold text-slate-900 dark:text-white">{descObj.current_roommates}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Currently<br/>Living</p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl p-3 shadow-sm">
+                    <p className="text-xl font-extrabold text-slate-900 dark:text-white">{descObj.total_roommates}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Total<br/>Capacity</p>
+                  </div>
+                  <div className="bg-emerald-500 rounded-xl p-3 shadow-sm shadow-emerald-500/25">
+                    <p className="text-xl font-extrabold text-white">{descObj.spots_needed}</p>
+                    <p className="text-[10px] text-emerald-100 font-semibold mt-0.5">Spots<br/>Needed</p>
+                  </div>
                 </div>
               </div>
 

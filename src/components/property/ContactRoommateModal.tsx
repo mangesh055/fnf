@@ -119,10 +119,13 @@ export default function ContactRoommateModal({ roommate, isOpen, onClose }: Cont
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">Looking for roommates in {descObj.location || roommate.city}</h4>
                 <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5 truncate">
                   <MapPin className="w-3 h-3 text-red-500 shrink-0" />
-                  {roommate.college} • {roommate.branch}
+                  {roommate.college}
                 </p>
                 <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-1">
-                  {formatCurrency(roommate.budget_min)} - {formatCurrency(roommate.budget_max)} <span className="text-[10px] font-normal text-slate-400">/month</span>
+                  {roommate.budget_min === roommate.budget_max
+                    ? formatCurrency(roommate.budget_min)
+                    : `${formatCurrency(roommate.budget_min)} - ${formatCurrency(roommate.budget_max)}`
+                  } <span className="text-[10px] font-normal text-slate-400">/month</span>
                 </p>
               </div>
             </div>

@@ -35,6 +35,7 @@ export interface IProperty extends Document {
   pg_config?: Record<string, any>;
   brokerage_applied?: boolean;
   brokerage_amount?: number;
+  is_student_request?: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -75,6 +76,7 @@ const PropertySchema: Schema = new Schema(
     pg_config: { type: Schema.Types.Mixed, default: {} },
     brokerage_applied: { type: Boolean, default: false },
     brokerage_amount: { type: Number, default: 0 },
+    is_student_request: { type: Boolean, default: false },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

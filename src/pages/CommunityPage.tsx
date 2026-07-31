@@ -531,7 +531,7 @@ export default function CommunityPage() {
                             {categoryDisplayName}
                           </span>
                         
-                        {post.author_id === profile?.id && (
+                        {(post.author_id === profile?.id || profile?.role === 'admin') && (
                           <div className="flex items-center gap-1">
                             <button
                               onClick={(e) => {

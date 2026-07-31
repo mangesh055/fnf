@@ -358,32 +358,96 @@ export default function MessOwnerDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">
-              ☀️ Day Service Time (Lunch)
-            </label>
-            <input
-              type="text"
-              value={dayServiceTime}
-              onChange={(e) => setDayServiceTime(e.target.value)}
-              placeholder="e.g. 11:30 AM - 03:00 PM"
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">
-              🌙 Evening Service Time (Dinner)
-            </label>
-            <input
-              type="text"
-              value={eveningServiceTime}
-              onChange={(e) => setEveningServiceTime(e.target.value)}
-              placeholder="e.g. 07:00 PM - 10:30 PM"
-              className="input-field"
-            />
-          </div>
-        </div>
+        {/* Helpers to convert 24-hour time to 12-hour AM/PM and back */}
+        {(() => {
+          const convert24to12 = (time24: string): string => {
+            if (!time24) return ''
+            const [hoursStr, minutesStr] = time24.split(':')
+            const hours = parseInt(hoursStr)
+            const ampm = hours >= 12 ? 'PM' : 'AM'
+            const hours12 = hours % 12 || 12
+            const formattedHours = String(hours12).padStart(2, '0')
+            return `${formattedHours}:${minutesStr} ${ampm}`
+          }
+
+          const convert12to24 = (time12: string): string => {
+            if (!time12) return '12:00'
+            const clean = time12.trim().toUpperCase()
+            const match = clean.match(/^(\d+):(\d+)\s*(AM|PM)$/)
+            if (!match) return '12:00'
+            let hours = parseInt(match[1])
+            const minutes = match[2]
+            const ampm = match[3]
+            if (ampm === 'PM' && hours < 12) hours += 12
+            if (ampm === 'AM' && hours === 12) hours = 0
+            return `${String(hours).padStart(2, '0')}:${minutes}`
+          }
+
+          const [lunchStart, lunchEnd] = (dayServiceTime || '11:30 AM - 03:00 PM').split(' - ')
+          const lunchStart24 = convert12to24(lunchStart)
+          const lunchEnd24 = convert12to24(lunchEnd)
+
+          const [dinnerStart, dinnerEnd] = (eveningServiceTime || '07:00 PM - 10:30 PM').split(' - ')
+          const dinnerStart24 = convert12to24(dinnerStart)
+          const dinnerEnd24 = convert12to24(dinnerEnd)
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                  ☀️ Lunch Service (Day)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={lunchStart24}
+                    onChange={(e) => {
+                      const newStart = convert24to12(e.target.value)
+                      setDayServiceTime(`${newStart} - ${lunchEnd || '03:00 PM'}`)
+                    }}
+                    className="input-field text-center py-2 px-3"
+                  />
+                  <span className="text-slate-400 text-xs">to</span>
+                  <input
+                    type="time"
+                    value={lunchEnd24}
+                    onChange={(e) => {
+                      const newEnd = convert24to12(e.target.value)
+                      setDayServiceTime(`${lunchStart || '11:30 AM'} - ${newEnd}`)
+                    }}
+                    className="input-field text-center py-2 px-3"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                  🌙 Dinner Service (Evening)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={dinnerStart24}
+                    onChange={(e) => {
+                      const newStart = convert24to12(e.target.value)
+                      setEveningServiceTime(`${newStart} - ${dinnerEnd || '10:30 PM'}`)
+                    }}
+                    className="input-field text-center py-2 px-3"
+                  />
+                  <span className="text-slate-400 text-xs">to</span>
+                  <input
+                    type="time"
+                    value={dinnerEnd24}
+                    onChange={(e) => {
+                      const newEnd = convert24to12(e.target.value)
+                      setEveningServiceTime(`${dinnerStart || '07:00 PM'} - ${newEnd}`)
+                    }}
+                    className="input-field text-center py-2 px-3"
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center justify-between border-t border-slate-200/60 dark:border-slate-700/60 pt-2.5 gap-2">
           <span className="font-medium text-slate-600 dark:text-slate-300">

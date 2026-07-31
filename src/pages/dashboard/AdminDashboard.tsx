@@ -771,8 +771,8 @@ export default function AdminDashboard() {
   )
 
   const renderProperties = () => {
-    const studentRequests = properties.filter(p => p.profiles?.role === 'student')
-    const regularProperties = properties.filter(p => p.profiles?.role !== 'student')
+    const studentRequests = properties.filter(p => p.is_student_request === true || p.profiles?.role === 'student')
+    const regularProperties = properties.filter(p => !p.is_student_request && p.profiles?.role !== 'student')
 
     const renderPropertySection = (title: string, data: any[]) => (
       <div className="card p-6 mb-6" key={title}>

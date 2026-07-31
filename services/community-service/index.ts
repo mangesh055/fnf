@@ -51,7 +51,7 @@ async function getAuthorDetails(authorId: string) {
 // Community / Marketplace Posts endpoints
 app.get('/api/community/posts', async (req: Request, res: Response) => {
   try {
-    const posts = await Post.find().sort({ created_at: -1 });
+    const posts = await Post.find().sort({ created_at: -1 }).allowDiskUse(true);
     const populated = await Promise.all(posts.map(async (p) => {
       const obj = p.toObject();
       const author = await getAuthorDetails(obj.author_id);

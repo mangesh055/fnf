@@ -198,7 +198,7 @@ export default function AuthPage() {
               </button>
             </div>
 
-            <form onSubmit={showDevFallback ? handleSubmit : (e) => e.preventDefault()} className="space-y-4">
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
               <AnimatePresence mode="wait">
                 {activeTab === 'signin' ? (
                   <motion.div
@@ -219,40 +219,6 @@ export default function AuthPage() {
                         Sign in with Google to access your properties, messes & community posts
                       </p>
                     </div>
-
-                    {showDevFallback && (
-                      <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">Email Address</label>
-                          <div className="relative">
-                            <Mail className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
-                            <input
-                              type="email"
-                              required
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder="student@college.edu"
-                              className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 dark:text-white focus:border-brand-500 focus:outline-none transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">Password</label>
-                          <div className="relative">
-                            <Lock className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
-                            <input
-                              type="password"
-                              required
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="••••••••"
-                              className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 dark:text-white focus:border-brand-500 focus:outline-none transition-all"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </motion.div>
                 ) : (
                   <motion.div
@@ -285,70 +251,6 @@ export default function AuthPage() {
                         ))}
                       </div>
                     </div>
-
-                    {showDevFallback && (
-                      <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">Full Name</label>
-                          <div className="relative">
-                            <User className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
-                            <input
-                              type="text"
-                              required
-                              value={fullName}
-                              onChange={(e) => setFullName(e.target.value)}
-                              placeholder="John Doe"
-                              className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 dark:text-white focus:border-brand-500 focus:outline-none transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">Email Address</label>
-                          <div className="relative">
-                            <Mail className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
-                            <input
-                              type="email"
-                              required
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              placeholder="john@college.edu"
-                              className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 dark:text-white focus:border-brand-500 focus:outline-none transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">Phone Number</label>
-                          <div className="relative">
-                            <Phone className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
-                            <input
-                              type="tel"
-                              required
-                              value={phone}
-                              onChange={(e) => setPhone(e.target.value)}
-                              placeholder="+91 98765 43210"
-                              className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 dark:text-white focus:border-brand-500 focus:outline-none transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">Password</label>
-                          <div className="relative">
-                            <Lock className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
-                            <input
-                              type="password"
-                              required
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="••••••••"
-                              className="w-full pl-11 pr-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 dark:text-white focus:border-brand-500 focus:outline-none transition-all"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -357,61 +259,38 @@ export default function AuthPage() {
                 <p className="text-xs text-red-500 font-medium text-center">{error}</p>
               )}
 
-              {showDevFallback && (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 rounded-2xl bg-brand-500 hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-700 text-white font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
-                >
-                  {activeTab === 'signin' ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
-                  <span>{loading ? 'Processing...' : activeTab === 'signin' ? 'Sign In' : 'Create Account'}</span>
-                </button>
-              )}
-
-              {!showDevFallback && (
-                <div className="pt-2 flex justify-center w-full">
-                  <div className="w-full max-w-[280px] flex justify-center">
-                    {loading ? (
-                      <div className="py-2.5 px-6 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-semibold rounded-full animate-pulse">
-                        Signing in with Google...
-                      </div>
-                    ) : (
-                      <GoogleLogin
-                        onSuccess={async (credentialResponse) => {
-                          if (credentialResponse.credential) {
-                            setError('')
-                            setLoading(true)
-                            const res = await signInWithGoogle(
-                              credentialResponse.credential,
-                              activeTab === 'register' ? selectedRole : undefined,
-                              activeTab
-                            )
-                            setLoading(false)
-                            if (!res.success) {
-                              setError(res.error || 'Google Authentication failed.')
-                            }
+              <div className="pt-2 flex justify-center w-full">
+                <div className="w-full max-w-[280px] flex justify-center">
+                  {loading ? (
+                    <div className="py-2.5 px-6 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-semibold rounded-full animate-pulse">
+                      Signing in with Google...
+                    </div>
+                  ) : (
+                    <GoogleLogin
+                      onSuccess={async (credentialResponse) => {
+                        if (credentialResponse.credential) {
+                          setError('')
+                          setLoading(true)
+                          const res = await signInWithGoogle(
+                            credentialResponse.credential,
+                            activeTab === 'register' ? selectedRole : undefined,
+                            activeTab
+                          )
+                          setLoading(false)
+                          if (!res.success) {
+                            setError(res.error || 'Google Authentication failed.')
                           }
-                        }}
-                        onError={() => {
-                          setError('Google sign in failed. Please try again.')
-                        }}
-                        theme="filled_blue"
-                        shape="pill"
-                        size="large"
-                      />
-                    )}
-                  </div>
+                        }
+                      }}
+                      onError={() => {
+                        setError('Google sign in failed. Please try again.')
+                      }}
+                      theme="filled_blue"
+                      shape="pill"
+                      size="large"
+                    />
+                  )}
                 </div>
-              )}
-
-              <div className="text-center mt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowDevFallback(!showDevFallback)}
-                  className="text-xs text-slate-400 hover:text-slate-600 underline cursor-pointer"
-                >
-                  {showDevFallback ? '← Hide Email/Password Option' : '⚡ Use Email/Password (Developer Fallback)'}
-                </button>
               </div>
             </form>
 

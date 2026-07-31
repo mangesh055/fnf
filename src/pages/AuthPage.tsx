@@ -46,7 +46,7 @@ export default function AuthPage() {
         const propsCount = propertyRows?.length || 0
         const messesCount = messRows?.length || 0
         
-        const countRes = await gatewayFetch('/auth/users/count')
+        const countRes = await gatewayFetch('/auth/users/count') as any
         const studentsCount = countRes.success && typeof countRes.count === 'number' ? countRes.count : 0
         
         setStats({

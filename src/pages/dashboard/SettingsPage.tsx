@@ -11,8 +11,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'preferences'>('profile')
   
   const [formData, setFormData] = useState({
-    fullName: profile?.full_name || user?.user_metadata?.full_name || '',
-    phone: profile?.phone || user?.phone || user?.user_metadata?.phone || '',
+    fullName: profile?.full_name || (user as any)?.user_metadata?.full_name || '',
+    phone: profile?.phone || user?.phone || (user as any)?.user_metadata?.phone || '',
     address: profile?.address || '',
     gender: profile?.gender || 'male',
     college: profile?.college || '',
@@ -41,7 +41,7 @@ export default function SettingsPage() {
   // Sync form state when profile changes
   useEffect(() => {
     if (profile || user) {
-      const meta = user?.user_metadata || {}
+      const meta = (user as any)?.user_metadata || {}
       setFormData(prev => ({
         ...prev,
         fullName: profile?.full_name || meta.full_name || prev.fullName,

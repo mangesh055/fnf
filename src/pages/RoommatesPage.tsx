@@ -19,17 +19,17 @@ export default function RoommatesPage() {
   const navigate = useNavigate()
   const [roommates, setRoommates] = useState<RoommateRow[]>([])
   const [myProfile, setMyProfile] = useState<RoommateRow | null>(null)
-  
+
   const [search, setSearch] = useState('')
   const [selectedGender, setSelectedGender] = useState<string>('')
   const [selectedFood, setSelectedFood] = useState<string>('')
   const [maxBudget, setMaxBudget] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
-   const [isEditing, setIsEditing] = useState(false)
-   const [editingRoommateId, setEditingRoommateId] = useState<string | null>(null)
-   const [customAmenity, setCustomAmenity] = useState('')
-   const [isUploadingVideo, setIsUploadingVideo] = useState(false)
-   const [selectedRoommateForContact, setSelectedRoommateForContact] = useState<RoommateRow | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingRoommateId, setEditingRoommateId] = useState<string | null>(null)
+  const [customAmenity, setCustomAmenity] = useState('')
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false)
+  const [selectedRoommateForContact, setSelectedRoommateForContact] = useState<RoommateRow | null>(null)
 
   // Form Fields for new Roommate seeker — persisted so camera round-trips don't clear it
   const ROOMMATE_FORM_KEY = `roommate_form_${profile?.id || 'guest'}`
@@ -302,12 +302,12 @@ export default function RoommatesPage() {
                   <p className="text-sm font-semibold text-white">{[myProfile.college, myProfile.branch].filter(Boolean).join(' • ') || 'No college info'}</p>
                 </div>
                 <button onClick={() => {
-                  let descObj = { text: myProfile.description, deposit: 0, total_roommates: 1, location: '', amenities: [] as string[], images: [] as string[], video_url: '', phone: '', whatsapp: '' }
+                  let descObj = { text: myProfile.description, deposit: 0, total_roommates: 1, current_roommates: 1, spots_needed: 1, location: '', amenities: [] as string[], images: [] as string[], video_url: '', phone: '', whatsapp: '' }
                   try {
                     const parsed = JSON.parse(myProfile.description || '{}')
                     if (parsed.text !== undefined) descObj = { ...descObj, ...parsed }
-                  } catch (e) {}
-                  
+                  } catch (e) { }
+
                   let rawWhatsapp = descObj.whatsapp || descObj.phone || ''
                   let parsedCode = '+91'
                   let parsedNumber = rawWhatsapp
@@ -319,21 +319,23 @@ export default function RoommatesPage() {
                       break
                     }
                   }
-                  
+
                   setForm({
-                    budget_min: myProfile.budget_min.toString(),
-                    budget_max: myProfile.budget_max.toString(),
+                    budget_min: myProfile?.budget_min.toString() || '4000',
+                    budget_max: myProfile?.budget_max.toString() || '8000',
                     deposit: descObj.deposit ? descObj.deposit.toString() : '',
-                    total_roommates: descObj.total_roommates.toString(),
-                    location: descObj.location,
-                    college: myProfile.college,
-                    branch: myProfile.branch,
-                    gender: myProfile.gender,
-                    food_preference: myProfile.food_preference as any,
-                    smoking: myProfile.smoking,
-                    sleep_schedule: myProfile.sleep_schedule as any,
-                    looking_for: myProfile.looking_for as any,
-                    amenities: descObj.amenities,
+                    total_roommates: (descObj.total_roommates || 4).toString(),
+                    current_roommates: (descObj.current_roommates || 1).toString(),
+                    spots_needed: (descObj.spots_needed || 1).toString(),
+                    location: descObj.location || '',
+                    college: myProfile?.college || '',
+                    branch: myProfile?.branch || '',
+                    gender: myProfile?.gender || 'male',
+                    food_preference: (myProfile?.food_preference || 'any') as any,
+                    smoking: myProfile?.smoking ?? false,
+                    sleep_schedule: (myProfile?.sleep_schedule || 'any') as any,
+                    looking_for: (myProfile?.looking_for || 'any') as any,
+                    amenities: descObj.amenities || [],
                     images: descObj.images || [],
                     video_url: descObj.video_url || '',
                     description: descObj.text || '',
@@ -412,7 +414,7 @@ export default function RoommatesPage() {
               try {
                 const parsed = JSON.parse(item.description || '{}')
                 if (parsed.text !== undefined) descObj = { ...descObj, ...parsed }
-              } catch (e) {}
+              } catch (e) { }
               // Dynamically compute spots_needed for old profiles (total - current)
               if (!descObj.spots_needed || (descObj.spots_needed === 1 && descObj.total_roommates > 2)) {
                 descObj.spots_needed = Math.max(1, descObj.total_roommates - descObj.current_roommates)
@@ -428,17 +430,17 @@ export default function RoommatesPage() {
                   whileTap={{ scale: 0.985 }}
                   className="h-full"
                 >
-                  <div 
+                  <div
                     className="card-property card-shine group flex flex-col h-full p-2 transition-all duration-300 hover:shadow-2xl hover:shadow-brand-500/15 border border-transparent hover:border-brand-500/30 cursor-pointer bg-white dark:bg-slate-900 rounded-2xl shadow-sm"
                     onClick={() => navigate(`/roommates/${item.id}`)}
                   >
                     {/* Media Header (Matching PropertyCard image container) */}
                     <div className="relative overflow-hidden h-48 sm:h-52 rounded-xl shrink-0">
                       {(descObj.images?.length || 0) > 0 ? (
-                        <img 
-                          src={descObj.images?.[0]} 
-                          alt={item.full_name || 'Roommate'} 
-                          className="property-image w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out animate-in fade-in" 
+                        <img
+                          src={descObj.images?.[0]}
+                          alt={item.full_name || 'Roommate'}
+                          className="property-image w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out animate-in fade-in"
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-brand-600 via-indigo-600 to-purple-700 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
@@ -636,7 +638,7 @@ export default function RoommatesPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { clearPersistedForm(); setShowForm(false) }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.95, y: 15, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 15, opacity: 0 }}
               className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-glass overflow-hidden z-10 max-h-[90vh] flex flex-col">
-              
+
               <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
                 <h3 className="text-xl font-display font-bold text-slate-900 dark:text-white">📝 {isEditing ? 'Edit Your Room Details' : 'Post Your Room Details'}</h3>
                 <button onClick={() => { clearPersistedForm(); setShowForm(false) }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400"><X className="w-5 h-5" /></button>
@@ -658,7 +660,7 @@ export default function RoommatesPage() {
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Location / Address</label>
                   <input type="text" value={form.location} onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))} className="input-field text-sm" placeholder="e.g. Kothrud, near MIT Gate" required />
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 mb-1">Contact Number (Calling)</label>
@@ -842,10 +844,10 @@ export default function RoommatesPage() {
         )}
       </AnimatePresence>
 
-      <ContactRoommateModal 
-        roommate={selectedRoommateForContact} 
-        isOpen={!!selectedRoommateForContact} 
-        onClose={() => setSelectedRoommateForContact(null)} 
+      <ContactRoommateModal
+        roommate={selectedRoommateForContact}
+        isOpen={!!selectedRoommateForContact}
+        onClose={() => setSelectedRoommateForContact(null)}
       />
     </div>
   )

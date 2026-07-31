@@ -104,7 +104,7 @@ export default function RoommateDetailPage() {
     whatsapp: string
     [key: string]: any
   } = {
-    text: roommate.description,
+    text: roommate.description || '',
     deposit: 0,
     total_roommates: 2,
     current_roommates: 1,

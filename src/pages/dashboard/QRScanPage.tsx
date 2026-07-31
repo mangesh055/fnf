@@ -46,7 +46,7 @@ export default function QRScanPage() {
         .select('mess_id, messes(name)')
         .eq('student_id', profile.id)
         .eq('status', 'active')
-        .then(({ data }) => {
+        .then(({ data }: any) => {
           if (data) setMyMesses(data as any)
         })
     }

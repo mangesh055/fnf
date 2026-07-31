@@ -109,8 +109,8 @@ export default function AdminDashboard() {
       ].slice(0, 5)
 
       setPendingItems(mixedPending)
-      
-      const usersCount = 12; // Placeholder for overview stats
+      const countRes = await gatewayFetch('/auth/users/count') as any;
+      const usersCount = countRes.success && typeof countRes.count === 'number' ? countRes.count : 0;
       const realActiveSubs = 8;
       const realMonthlyRevenue = realActiveSubs * 3500;
       

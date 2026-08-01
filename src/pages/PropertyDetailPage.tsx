@@ -460,7 +460,7 @@ export default function PropertyDetailPage() {
                             <div className="space-y-0.5 mb-3">
                               <div className="flex items-baseline gap-1.5">
                                 <span className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(tier.rent)}</span>
-                                <span className="text-xs font-semibold text-slate-400">/head/month</span>
+                                <span className="text-xs font-semibold text-slate-400">/head/year</span>
                               </div>
                               <p className="text-xs text-slate-500 font-medium">Security Deposit: <span className="font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(tier.deposit)}</span></p>
                             </div>

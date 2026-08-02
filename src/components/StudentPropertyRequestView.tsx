@@ -105,7 +105,7 @@ export default function StudentPropertyRequestView() {
     const { name, value } = e.target
     let cleanVal = value
     if (name === 'rent' || name === 'deposit' || name === 'total_rooms' || name === 'available_rooms') {
-      cleanVal = value.replace(/^0+(?=\d)/, '')
+      cleanVal = value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
     }
     setFormData(prev => ({ ...prev, [name]: cleanVal }))
   }
@@ -260,14 +260,24 @@ export default function StudentPropertyRequestView() {
       return
     }
 
+    const cleanedSharingConfigs = (formData.property_type === 'pg' || formData.property_type === 'shared_room' || formData.property_type === 'private_room' || formData.property_type === 'hostel')
+      ? sharingConfigs.map(c => ({
+          ...c,
+          rent: c.rent === '' ? 0 : (Number(c.rent) || 0),
+          deposit: c.deposit === '' ? 0 : (Number(c.deposit) || 0),
+          available_beds: c.available_beds === '' ? 0 : (Number(c.available_beds) || 0),
+          total_beds: c.total_beds === '' ? 0 : (Number(c.total_beds) || 0),
+        }))
+      : []
+
     const propertyData: any = {
       owner_name: formData.owner_name || profile?.full_name || 'Property Owner',
       contact_phone: formData.contact_phone || profile?.phone || '',
       title: formData.title || 'Cozy Room / Property',
       description: formData.description || 'Clean rooms with complete student amenities.',
       property_type: formData.property_type,
-      rent: Number(formData.rent) || 6000,
-      deposit: Number(formData.deposit) || 12000,
+      rent: (formData.rent !== '' && !isNaN(Number(formData.rent))) ? Number(formData.rent) : 6000,
+      deposit: (formData.deposit !== '' && !isNaN(Number(formData.deposit))) ? Number(formData.deposit) : 12000,
       address: formData.address || 'Kothrud, Pune',
       city: formData.city,
       state: formData.state,
@@ -281,9 +291,9 @@ export default function StudentPropertyRequestView() {
       images: formData.images,
       video_url: formData.video_url,
       amenities: formData.amenities,
-      sharing_configs: formData.property_type === 'pg' || formData.property_type === 'shared_room' || formData.property_type === 'private_room' ? sharingConfigs : [],
+      sharing_configs: cleanedSharingConfigs,
       flat_config: formData.property_type === 'flat' ? flatConfig : null,
-      hostel_config: formData.property_type === 'hostel' ? hostelConfig : null,
+      hostel_config: formData.property_type === 'hostel' ? { ...hostelConfig, category_configs: cleanedSharingConfigs } : null,
       updated_at: new Date().toISOString()
     }
 
@@ -611,11 +621,13 @@ export default function StudentPropertyRequestView() {
                                   <div>
                                     <label className="text-[10px] text-slate-500 font-medium">Rent (₹/head)</label>
                                     <input
-                                      type="number"
-                                      value={config.rent || ''}
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={config.rent !== undefined ? config.rent : ''}
                                       placeholder="7000"
                                       onChange={(e) => {
-                                        const val = Number(e.target.value) || 0
+                                        const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                        const val = cleanStr === '' ? 0 : Number(cleanStr)
                                         setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, rent: val } : c))
                                       }}
                                       className="input-field py-1 text-xs font-semibold w-full min-w-0"
@@ -624,11 +636,13 @@ export default function StudentPropertyRequestView() {
                                   <div>
                                     <label className="text-[10px] text-slate-500 font-medium">Deposit (₹/head)</label>
                                     <input
-                                      type="number"
-                                      value={config.deposit || ''}
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={config.deposit !== undefined ? config.deposit : ''}
                                       placeholder="14000"
                                       onChange={(e) => {
-                                        const val = Number(e.target.value) || 0
+                                        const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                        const val = cleanStr === '' ? 0 : Number(cleanStr)
                                         setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, deposit: val } : c))
                                       }}
                                       className="input-field py-1 text-xs font-semibold w-full min-w-0"
@@ -637,11 +651,13 @@ export default function StudentPropertyRequestView() {
                                   <div>
                                     <label className="text-[10px] text-slate-500 font-medium">Avail. Beds</label>
                                     <input
-                                      type="number"
-                                      value={config.available_beds || ''}
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={config.available_beds !== undefined ? config.available_beds : ''}
                                       placeholder="3"
                                       onChange={(e) => {
-                                        const val = Number(e.target.value) || 0
+                                        const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                        const val = cleanStr === '' ? 0 : Number(cleanStr)
                                         setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, available_beds: val } : c))
                                       }}
                                       className="input-field py-1 text-xs font-semibold w-full min-w-0"
@@ -650,11 +666,13 @@ export default function StudentPropertyRequestView() {
                                   <div>
                                     <label className="text-[10px] text-slate-500 font-medium">Total Beds</label>
                                     <input
-                                      type="number"
-                                      value={config.total_beds || ''}
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={config.total_beds !== undefined ? config.total_beds : ''}
                                       placeholder="6"
                                       onChange={(e) => {
-                                        const val = Number(e.target.value) || 0
+                                        const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                        const val = cleanStr === '' ? 0 : Number(cleanStr)
                                         setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, total_beds: val } : c))
                                       }}
                                       className="input-field py-1 text-xs font-semibold w-full min-w-0"
@@ -706,9 +724,15 @@ export default function StudentPropertyRequestView() {
                       <div>
                         <label className="text-[10px] text-slate-500 font-medium">Maintenance (₹/mo)</label>
                         <input
-                          type="number"
-                          value={flatConfig.maintenance_charges}
-                          onChange={(e) => setFlatConfig(prev => ({ ...prev, maintenance_charges: Number(e.target.value) || 0 }))}
+                          type="text"
+                          inputMode="numeric"
+                          value={flatConfig.maintenance_charges === undefined ? '' : flatConfig.maintenance_charges}
+                          onChange={(e) => {
+                            const cleanVal = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                            const val = cleanVal === '' ? 0 : Number(cleanVal)
+                            setFlatConfig(prev => ({ ...prev, maintenance_charges: val }))
+                          }}
+                          placeholder="e.g. 1500"
                           className="input-field py-1 text-xs font-semibold w-full min-w-0"
                         />
                       </div>
@@ -721,29 +745,29 @@ export default function StudentPropertyRequestView() {
                   <div>
                     <label className="block text-[11px] sm:text-xs font-semibold text-slate-500 mb-1">Starting Rent (₹) *</label>
                     <input
-                      type="number" name="rent" required value={formData.rent} onChange={handleInputChange}
-                      placeholder="7500" className="input-field font-semibold w-full min-w-0"
+                      type="text" inputMode="numeric" name="rent" required value={formData.rent} onChange={handleInputChange}
+                      placeholder="e.g. 7500" className="input-field font-semibold w-full min-w-0"
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] sm:text-xs font-semibold text-slate-500 mb-1">Deposit (₹) *</label>
                     <input
-                      type="number" name="deposit" required value={formData.deposit} onChange={handleInputChange}
-                      placeholder="15000" className="input-field font-semibold w-full min-w-0"
+                      type="text" inputMode="numeric" name="deposit" required value={formData.deposit} onChange={handleInputChange}
+                      placeholder="e.g. 15000" className="input-field font-semibold w-full min-w-0"
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] sm:text-xs font-semibold text-slate-500 mb-1">Total Rooms</label>
                     <input
-                      type="number" name="total_rooms" value={formData.total_rooms} onChange={handleInputChange}
-                      className="input-field font-semibold w-full min-w-0"
+                      type="text" inputMode="numeric" name="total_rooms" value={formData.total_rooms} onChange={handleInputChange}
+                      placeholder="e.g. 10" className="input-field font-semibold w-full min-w-0"
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] sm:text-xs font-semibold text-slate-500 mb-1">Avail. Rooms</label>
                     <input
-                      type="number" name="available_rooms" value={formData.available_rooms} onChange={handleInputChange}
-                      className="input-field font-semibold w-full min-w-0"
+                      type="text" inputMode="numeric" name="available_rooms" value={formData.available_rooms} onChange={handleInputChange}
+                      placeholder="e.g. 5" className="input-field font-semibold w-full min-w-0"
                     />
                   </div>
                 </div>
@@ -844,12 +868,41 @@ export default function StudentPropertyRequestView() {
                         if (navigator.geolocation) {
                           navigator.geolocation.getCurrentPosition(
                             (pos) => {
+                              const lat = pos.coords.latitude
+                              const lon = pos.coords.longitude
                               setFormData(prev => ({
                                 ...prev,
-                                latitude: pos.coords.latitude.toString(),
-                                longitude: pos.coords.longitude.toString(),
-                                google_maps_url: `https://www.google.com/maps/search/?api=1&query=${pos.coords.latitude},${pos.coords.longitude}`
+                                latitude: lat.toString(),
+                                longitude: lon.toString(),
+                                google_maps_url: `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`
                               }))
+
+                              fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+                                .then(res => res.json())
+                                .then(data => {
+                                  if (data && data.address) {
+                                    const addrObj = data.address
+                                    const parts = []
+                                    if (addrObj.amenity) parts.push(addrObj.amenity)
+                                    if (addrObj.building) parts.push(addrObj.building)
+                                    if (addrObj.house_number) parts.push(addrObj.house_number)
+                                    if (addrObj.road) parts.push(addrObj.road)
+                                    if (addrObj.neighbourhood) parts.push(addrObj.neighbourhood)
+                                    if (addrObj.suburb) parts.push(addrObj.suburb)
+                                    if (addrObj.city_district) parts.push(addrObj.city_district)
+                                    
+                                    const addr = parts.length > 0 ? parts.join(', ') : (data.display_name || '')
+                                    const city = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || 'Pune'
+                                    const pincode = addrObj.postcode || ''
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      address: addr,
+                                      city: city,
+                                      pincode: pincode
+                                    }))
+                                  }
+                                })
+                                .catch(err => console.error("Error geocoding:", err))
                             },
                             () => alert('Unable to detect location. Please check browser permissions.'),
                             { enableHighAccuracy: true }

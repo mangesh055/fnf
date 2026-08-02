@@ -27,6 +27,7 @@ export default function OwnerDashboard() {
   const [formStep, setFormStep] = useState(1)
   const [isUploading, setIsUploading] = useState(false)
   const [customAmenityInput, setCustomAmenityInput] = useState('')
+  const [tierCustomAmenity, setTierCustomAmenity] = useState<Record<string, string>>({})
 
   // Form State — persisted so camera round-trips don't reset it
   const PROPERTY_FORM_KEY = `property_form_${profile?.id || 'guest'}`
@@ -162,8 +163,8 @@ export default function OwnerDashboard() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     let cleanVal = value
-    if (name === 'rent' || name === 'deposit' || name === 'total_rooms' || name === 'available_rooms') {
-      cleanVal = value.replace(/^0+(?=\d)/, '')
+    if (name === 'rent' || name === 'deposit' || name === 'total_rooms' || name === 'available_rooms' || name === 'brokerage_amount') {
+      cleanVal = value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
     }
     setFormData(prev => ({ ...prev, [name]: cleanVal }))
   }
@@ -291,10 +292,6 @@ export default function OwnerDashboard() {
     if (!window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
       return
     }
-    // Optimistic immediate UI state removal
-    usePropertyStore.setState((state) => ({
-      properties: state.properties.filter(p => String(p.id) !== String(id))
-    }))
     await deleteProperty(id)
   }
 
@@ -409,8 +406,8 @@ export default function OwnerDashboard() {
       return
     }
 
-    const primaryRent = Number(formData.rent) || (sharingConfigs[0]?.rent || 6000)
-    const primaryDeposit = Number(formData.deposit) || (sharingConfigs[0]?.deposit || 12000)
+    const primaryRent = (formData.rent !== '' && !isNaN(Number(formData.rent))) ? Number(formData.rent) : (sharingConfigs[0]?.rent !== undefined ? sharingConfigs[0].rent : 6000)
+    const primaryDeposit = (formData.deposit !== '' && !isNaN(Number(formData.deposit))) ? Number(formData.deposit) : (sharingConfigs[0]?.deposit !== undefined ? sharingConfigs[0].deposit : 12000)
 
     // Aggregate photos from main form AND all sharing tier configs
     const tierImages = sharingConfigs.flatMap(c => c.images || [])
@@ -423,6 +420,14 @@ export default function OwnerDashboard() {
       if (c.ac && formData.amenities?.ac !== false) consolidatedAmenities.ac = true
       if (c.study_desk && formData.amenities?.study_table !== false) consolidatedAmenities.study_table = true
     })
+
+    const cleanedSharingConfigs = sharingConfigs.map(c => ({
+      ...c,
+      rent: c.rent === '' ? 0 : (Number(c.rent) || 0),
+      deposit: c.deposit === '' ? 0 : (Number(c.deposit) || 0),
+      available_beds: c.available_beds === '' ? 0 : (Number(c.available_beds) || 0),
+      total_beds: c.total_beds === '' ? 0 : (Number(c.total_beds) || 0),
+    }))
 
     const propertyData: any = {
       title: formData.title || 'Cozy Accommodation',
@@ -440,15 +445,15 @@ export default function OwnerDashboard() {
       google_maps_url: formData.google_maps_url,
       contact_phone: formData.contact_phone,
       gender_preference: formData.gender_preference,
-      total_rooms: Number(formData.total_rooms) || 10,
-      available_rooms: Number(formData.available_rooms) || 5,
+      total_rooms: (formData.total_rooms !== '' && !isNaN(Number(formData.total_rooms))) ? Number(formData.total_rooms) : 10,
+      available_rooms: (formData.available_rooms !== '' && !isNaN(Number(formData.available_rooms))) ? Number(formData.available_rooms) : 5,
       images: finalImages,
       video_url: formData.video_url || sharingConfigs.find(c => c.video_url)?.video_url || '',
       amenities: consolidatedAmenities,
-      sharing_configs: sharingConfigs,
+      sharing_configs: cleanedSharingConfigs,
       flat_config: flatConfig,
-      hostel_config: { ...hostelConfig, category_configs: sharingConfigs },
-      pg_config: { ...pgConfig, sharing_configs: sharingConfigs },
+      hostel_config: { ...hostelConfig, category_configs: cleanedSharingConfigs },
+      pg_config: { ...pgConfig, sharing_configs: cleanedSharingConfigs },
       brokerage_applied: formData.brokerage_applied || false,
       brokerage_amount: formData.brokerage_applied ? (Number(formData.brokerage_amount) || 0) : 0,
     }
@@ -943,7 +948,10 @@ export default function OwnerDashboard() {
                         </div>
                       </td>
                       <td className="hidden sm:table-cell py-4 px-4 capitalize text-xs text-slate-600 dark:text-slate-400 font-medium">{p.property_type.replace('_', ' ')}</td>
-                      <td className="hidden sm:table-cell py-4 px-4 font-bold text-slate-800 dark:text-slate-200">{formatCurrency(p.rent)}/mo</td>
+                      <td className="hidden sm:table-cell py-4 px-4 font-bold text-slate-800 dark:text-slate-200">
+                        {formatCurrency(p.rent)}
+                        {(p.property_type === 'pg' || p.property_type === 'hostel') ? '/head/year' : '/ month'}
+                      </td>
                       <td className="hidden sm:table-cell py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{p.available_rooms}/{p.total_rooms}</td>
                       <td className="hidden sm:table-cell py-4 px-4 text-center">
                         <button onClick={() => toggleAvailability(p.id)} className="focus:outline-none">
@@ -1163,17 +1171,17 @@ export default function OwnerDashboard() {
                                   <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                       <div>
-                                        <label className="text-[10px] text-slate-500 font-medium">Rent (₹/head)</label>
+                                        <label className="text-[10px] text-slate-500 font-medium">Rent (₹/head/year)</label>
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.rent === 0 ? '' : config.rent}
+                                          value={config.rent !== undefined ? config.rent : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, rent: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, rent: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1183,13 +1191,13 @@ export default function OwnerDashboard() {
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.deposit === 0 ? '' : config.deposit}
+                                          value={config.deposit !== undefined ? config.deposit : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, deposit: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, deposit: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1199,13 +1207,13 @@ export default function OwnerDashboard() {
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.available_beds === 0 ? '' : config.available_beds}
+                                          value={config.available_beds !== undefined ? config.available_beds : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, available_beds: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, available_beds: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1215,13 +1223,13 @@ export default function OwnerDashboard() {
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.total_beds === 0 ? '' : config.total_beds}
+                                          value={config.total_beds !== undefined ? config.total_beds : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, total_beds: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, total_beds: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1265,6 +1273,87 @@ export default function OwnerDashboard() {
                                       >
                                         🚪 Personal Wardrobe
                                       </button>
+                                    </div>
+
+                                    {/* Custom Tier-Specific Amenities */}
+                                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-2">
+                                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                        ✨ Custom Room Amenities
+                                      </label>
+                                      <div className="flex gap-2">
+                                        <input
+                                          type="text"
+                                          value={tierCustomAmenity[type] || ''}
+                                          onChange={(e) => setTierCustomAmenity(prev => ({ ...prev, [type]: e.target.value }))}
+                                          placeholder="e.g. Attached Balcony, Personal Locker..."
+                                          className="input-field text-[11px] py-1 flex-1"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.preventDefault()
+                                              const text = tierCustomAmenity[type]?.trim()
+                                              if (text) {
+                                                setSharingConfigs(prev => prev.map(c => {
+                                                  if (c.sharing_type === type) {
+                                                    const existing = c.custom_amenities || []
+                                                    if (!existing.includes(text)) {
+                                                      return { ...c, custom_amenities: [...existing, text] }
+                                                    }
+                                                  }
+                                                  return c
+                                                }))
+                                                setTierCustomAmenity(prev => ({ ...prev, [type]: '' }))
+                                              }
+                                            }
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const text = tierCustomAmenity[type]?.trim()
+                                            if (text) {
+                                              setSharingConfigs(prev => prev.map(c => {
+                                                if (c.sharing_type === type) {
+                                                  const existing = c.custom_amenities || []
+                                                  if (!existing.includes(text)) {
+                                                    return { ...c, custom_amenities: [...existing, text] }
+                                                  }
+                                                }
+                                                return c
+                                              }))
+                                              setTierCustomAmenity(prev => ({ ...prev, [type]: '' }))
+                                            }
+                                          }}
+                                          className="px-3 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                                        >
+                                          Add
+                                        </button>
+                                      </div>
+                                      {config.custom_amenities && config.custom_amenities.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                          {config.custom_amenities.map((amenity, aIdx) => (
+                                            <span 
+                                              key={aIdx} 
+                                              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200/50 dark:border-brand-800"
+                                            >
+                                              {amenity}
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setSharingConfigs(prev => prev.map(c => {
+                                                    if (c.sharing_type === type) {
+                                                      return { ...c, custom_amenities: (c.custom_amenities || []).filter(a => a !== amenity) }
+                                                    }
+                                                    return c
+                                                  }))
+                                                }}
+                                                className="text-brand-400 hover:text-red-500 rounded transition-colors ml-0.5 font-bold"
+                                              >
+                                                ×
+                                              </button>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
 
                                     {/* Tier-Specific Photos & Video Upload */}
@@ -1381,17 +1470,17 @@ export default function OwnerDashboard() {
                                   <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                       <div>
-                                        <label className="text-[10px] text-slate-500 font-medium">Rent (₹/mo)</label>
+                                        <label className="text-[10px] text-slate-500 font-medium">Rent (₹/head/year)</label>
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.rent === 0 ? '' : config.rent}
+                                          value={config.rent !== undefined ? config.rent : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, rent: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, rent: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1401,13 +1490,13 @@ export default function OwnerDashboard() {
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.deposit === 0 ? '' : config.deposit}
+                                          value={config.deposit !== undefined ? config.deposit : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, deposit: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, deposit: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1417,13 +1506,13 @@ export default function OwnerDashboard() {
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.available_beds === 0 ? '' : config.available_beds}
+                                          value={config.available_beds !== undefined ? config.available_beds : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, available_beds: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, available_beds: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1433,13 +1522,13 @@ export default function OwnerDashboard() {
                                         <input
                                           type="text"
                                           inputMode="numeric"
-                                          value={config.total_beds === 0 ? '' : config.total_beds}
+                                          value={config.total_beds !== undefined ? config.total_beds : ''}
                                           placeholder="0"
                                           onFocus={(e) => e.target.select()}
                                           onChange={(e) => {
-                                            const cleanStr = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
-                                            const val = cleanStr === '' ? 0 : Number(cleanStr)
-                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, total_beds: val } : c))
+                                            const cleanStr = e.target.value.replace(/\D/g, '')
+                                            const val = cleanStr === '' ? '' : Number(cleanStr)
+                                            setSharingConfigs(prev => prev.map(c => c.sharing_type === type ? { ...c, total_beds: val as any } : c))
                                           }}
                                           className="input-field py-1 text-xs font-semibold"
                                         />
@@ -1483,6 +1572,87 @@ export default function OwnerDashboard() {
                                       >
                                         🚪 Personal Wardrobe
                                       </button>
+                                    </div>
+
+                                    {/* Custom Tier-Specific Amenities */}
+                                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-2">
+                                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                        ✨ Custom Room Amenities
+                                      </label>
+                                      <div className="flex gap-2">
+                                        <input
+                                          type="text"
+                                          value={tierCustomAmenity[type] || ''}
+                                          onChange={(e) => setTierCustomAmenity(prev => ({ ...prev, [type]: e.target.value }))}
+                                          placeholder="e.g. Attached Balcony, Personal Locker..."
+                                          className="input-field text-[11px] py-1 flex-1"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.preventDefault()
+                                              const text = tierCustomAmenity[type]?.trim()
+                                              if (text) {
+                                                setSharingConfigs(prev => prev.map(c => {
+                                                  if (c.sharing_type === type) {
+                                                    const existing = c.custom_amenities || []
+                                                    if (!existing.includes(text)) {
+                                                      return { ...c, custom_amenities: [...existing, text] }
+                                                    }
+                                                  }
+                                                  return c
+                                                }))
+                                                setTierCustomAmenity(prev => ({ ...prev, [type]: '' }))
+                                              }
+                                            }
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const text = tierCustomAmenity[type]?.trim()
+                                            if (text) {
+                                              setSharingConfigs(prev => prev.map(c => {
+                                                if (c.sharing_type === type) {
+                                                  const existing = c.custom_amenities || []
+                                                  if (!existing.includes(text)) {
+                                                    return { ...c, custom_amenities: [...existing, text] }
+                                                  }
+                                                }
+                                                return c
+                                              }))
+                                              setTierCustomAmenity(prev => ({ ...prev, [type]: '' }))
+                                            }
+                                          }}
+                                          className="px-3 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                                        >
+                                          Add
+                                        </button>
+                                      </div>
+                                      {config.custom_amenities && config.custom_amenities.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                          {config.custom_amenities.map((amenity, aIdx) => (
+                                            <span 
+                                              key={aIdx} 
+                                              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 border border-brand-200/50 dark:border-brand-800"
+                                            >
+                                              {amenity}
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setSharingConfigs(prev => prev.map(c => {
+                                                    if (c.sharing_type === type) {
+                                                      return { ...c, custom_amenities: (c.custom_amenities || []).filter(a => a !== amenity) }
+                                                    }
+                                                    return c
+                                                  }))
+                                                }}
+                                                className="text-brand-400 hover:text-red-500 rounded transition-colors ml-0.5 font-bold"
+                                              >
+                                                ×
+                                              </button>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
 
                                     {/* Tier-Specific Photos Upload */}
@@ -1571,8 +1741,8 @@ export default function OwnerDashboard() {
                           <div>
                             <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">Monthly Rent (₹) *</label>
                             <input
-                              type="number" name="rent" required
-                              value={formData.rent === '0' ? '' : formData.rent}
+                              type="text" inputMode="numeric" name="rent" required
+                              value={formData.rent}
                               onChange={handleInputChange}
                               placeholder="e.g. 18000" className="input-field py-1.5 text-xs font-semibold"
                             />
@@ -1580,8 +1750,8 @@ export default function OwnerDashboard() {
                           <div>
                             <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">Security Deposit (₹) *</label>
                             <input
-                              type="number" name="deposit" required
-                              value={formData.deposit === '0' ? '' : formData.deposit}
+                              type="text" inputMode="numeric" name="deposit" required
+                              value={formData.deposit}
                               onChange={handleInputChange}
                               placeholder="e.g. 36000" className="input-field py-1.5 text-xs font-semibold"
                             />
@@ -1628,10 +1798,15 @@ export default function OwnerDashboard() {
                               </select>
                               {flatConfig?.maintenance_type === 'extra' && (
                                 <input
-                                  type="number"
-                                  placeholder="Amount"
-                                  value={flatConfig?.maintenance_charges || 1500}
-                                  onChange={(e) => setFlatConfig(prev => ({ ...prev, maintenance_charges: Number(e.target.value) || 0 }))}
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="e.g. 1500"
+                                  value={flatConfig?.maintenance_charges === undefined ? '' : flatConfig.maintenance_charges}
+                                  onChange={(e) => {
+                                    const cleanVal = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+                                    const val = cleanVal === '' ? 0 : Number(cleanVal)
+                                    setFlatConfig(prev => ({ ...prev, maintenance_charges: val }))
+                                  }}
                                   className="input-field py-1 text-xs flex-1"
                                 />
                               )}
@@ -1711,10 +1886,11 @@ export default function OwnerDashboard() {
                         <div className="pt-2 border-t border-purple-100 dark:border-purple-900/40">
                           <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">Brokerage Amount (₹) *</label>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             name="brokerage_amount"
                             required={formData.brokerage_applied}
-                            value={formData.brokerage_amount === '0' ? '' : formData.brokerage_amount}
+                            value={formData.brokerage_amount}
                             onChange={handleInputChange}
                             placeholder="e.g. 5000"
                             className="input-field py-1.5 text-xs font-semibold"
@@ -1892,12 +2068,41 @@ export default function OwnerDashboard() {
                             if (navigator.geolocation) {
                               navigator.geolocation.getCurrentPosition(
                                 (pos) => {
+                                  const lat = pos.coords.latitude
+                                  const lon = pos.coords.longitude
                                   setFormData(prev => ({
                                     ...prev,
-                                    latitude: pos.coords.latitude.toString(),
-                                    longitude: pos.coords.longitude.toString(),
-                                    google_maps_url: `https://www.google.com/maps/search/?api=1&query=${pos.coords.latitude},${pos.coords.longitude}`
+                                    latitude: lat.toString(),
+                                    longitude: lon.toString(),
+                                    google_maps_url: `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`
                                   }))
+
+                                  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+                                    .then(res => res.json())
+                                    .then(data => {
+                                      if (data && data.address) {
+                                        const addrObj = data.address
+                                        const parts = []
+                                        if (addrObj.amenity) parts.push(addrObj.amenity)
+                                        if (addrObj.building) parts.push(addrObj.building)
+                                        if (addrObj.house_number) parts.push(addrObj.house_number)
+                                        if (addrObj.road) parts.push(addrObj.road)
+                                        if (addrObj.neighbourhood) parts.push(addrObj.neighbourhood)
+                                        if (addrObj.suburb) parts.push(addrObj.suburb)
+                                        if (addrObj.city_district) parts.push(addrObj.city_district)
+                                        
+                                        const addr = parts.length > 0 ? parts.join(', ') : (data.display_name || '')
+                                        const city = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || 'Pune'
+                                        const pincode = addrObj.postcode || ''
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          address: addr,
+                                          city: city,
+                                          pincode: pincode
+                                        }))
+                                      }
+                                    })
+                                    .catch(err => console.error("Error geocoding:", err))
                                 },
                                 (err) => alert('Unable to retrieve your location. Please ensure location permissions are granted.'),
                                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

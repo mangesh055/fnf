@@ -49,7 +49,11 @@ export default function StudentPropertyRequestModal({ isOpen, onClose }: { isOpe
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    let cleanVal = value
+    if (name === 'rent' || name === 'deposit' || name === 'total_rooms' || name === 'available_rooms') {
+      cleanVal = value.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+    }
+    setFormData(prev => ({ ...prev, [name]: cleanVal }))
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,8 +122,8 @@ export default function StudentPropertyRequestModal({ isOpen, onClose }: { isOpe
       title: formData.title || 'Cozy Shared PG Room',
       description: formData.description || 'Clean rooms with complete student amenities.',
       property_type: formData.property_type,
-      rent: Number(formData.rent) || 6000,
-      deposit: Number(formData.deposit) || 12000,
+      rent: (formData.rent !== '' && !isNaN(Number(formData.rent))) ? Number(formData.rent) : 6000,
+      deposit: (formData.deposit !== '' && !isNaN(Number(formData.deposit))) ? Number(formData.deposit) : 12000,
       address: formData.address || 'Kothrud, Pune',
       city: formData.city,
       state: formData.state,
@@ -255,14 +259,14 @@ export default function StudentPropertyRequestModal({ isOpen, onClose }: { isOpe
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 mb-1">Monthly Rent (₹) *</label>
                       <input
-                        type="number" name="rent" required value={formData.rent} onChange={handleInputChange}
+                        type="text" inputMode="numeric" name="rent" required value={formData.rent} onChange={handleInputChange}
                         placeholder="e.g. 7500" className="input-field"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 mb-1">Security Deposit (₹) *</label>
                       <input
-                        type="number" name="deposit" required value={formData.deposit} onChange={handleInputChange}
+                        type="text" inputMode="numeric" name="deposit" required value={formData.deposit} onChange={handleInputChange}
                         placeholder="e.g. 15000" className="input-field"
                       />
                     </div>
@@ -271,15 +275,15 @@ export default function StudentPropertyRequestModal({ isOpen, onClose }: { isOpe
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 mb-1">Total Rooms</label>
                       <input
-                        type="number" name="total_rooms" value={formData.total_rooms} onChange={handleInputChange}
-                        className="input-field"
+                        type="text" inputMode="numeric" name="total_rooms" value={formData.total_rooms} onChange={handleInputChange}
+                        placeholder="e.g. 10" className="input-field"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 mb-1">Available Rooms Left</label>
                       <input
-                        type="number" name="available_rooms" value={formData.available_rooms} onChange={handleInputChange}
-                        className="input-field"
+                        type="text" inputMode="numeric" name="available_rooms" value={formData.available_rooms} onChange={handleInputChange}
+                        placeholder="e.g. 5" className="input-field"
                       />
                     </div>
                   </div>
@@ -380,12 +384,41 @@ export default function StudentPropertyRequestModal({ isOpen, onClose }: { isOpe
                           if (navigator.geolocation) {
                             navigator.geolocation.getCurrentPosition(
                               (pos) => {
+                                const lat = pos.coords.latitude
+                                const lon = pos.coords.longitude
                                 setFormData(prev => ({
                                   ...prev,
-                                  latitude: pos.coords.latitude.toString(),
-                                  longitude: pos.coords.longitude.toString(),
-                                  google_maps_url: `https://www.google.com/maps/search/?api=1&query=${pos.coords.latitude},${pos.coords.longitude}`
+                                  latitude: lat.toString(),
+                                  longitude: lon.toString(),
+                                  google_maps_url: `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`
                                 }))
+
+                                fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+                                  .then(res => res.json())
+                                  .then(data => {
+                                    if (data && data.address) {
+                                      const addrObj = data.address
+                                      const parts = []
+                                      if (addrObj.amenity) parts.push(addrObj.amenity)
+                                      if (addrObj.building) parts.push(addrObj.building)
+                                      if (addrObj.house_number) parts.push(addrObj.house_number)
+                                      if (addrObj.road) parts.push(addrObj.road)
+                                      if (addrObj.neighbourhood) parts.push(addrObj.neighbourhood)
+                                      if (addrObj.suburb) parts.push(addrObj.suburb)
+                                      if (addrObj.city_district) parts.push(addrObj.city_district)
+                                      
+                                      const addr = parts.length > 0 ? parts.join(', ') : (data.display_name || '')
+                                      const city = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || 'Pune'
+                                      const pincode = addrObj.postcode || ''
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        address: addr,
+                                        city: city,
+                                        pincode: pincode
+                                      }))
+                                    }
+                                  })
+                                  .catch(err => console.error("Error geocoding:", err))
                               },
                               (err) => alert('Unable to retrieve your location. Please ensure location permissions are granted.'),
                               { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

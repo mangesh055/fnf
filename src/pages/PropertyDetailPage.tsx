@@ -303,8 +303,8 @@ export default function PropertyDetailPage() {
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 mb-6">
                 <div className="min-w-0">
                   <p className="text-xs text-slate-500 mb-1 whitespace-nowrap truncate">
-                    {(property.property_type === 'pg' || property.property_type === 'hostel') && property.sharing_configs?.length
-                      ? 'Rent Range'
+                    {(property.property_type === 'pg' || property.property_type === 'hostel')
+                      ? (property.sharing_configs?.length ? 'Rent Range (Yearly)' : 'Yearly Rent')
                       : 'Monthly Rent'}
                   </p>
                   <p className="text-xs sm:text-base md:text-lg font-bold text-slate-900 dark:text-white whitespace-nowrap truncate">
@@ -317,7 +317,11 @@ export default function PropertyDetailPage() {
                       }
                       return formatCurrency(property.rent)
                     })()}
-                    {(property.property_type === 'pg' || property.property_type === 'hostel') && <span className="text-[10px] sm:text-xs font-normal text-slate-400"> /head</span>}
+                    {(property.property_type === 'pg' || property.property_type === 'hostel') ? (
+                      <span className="text-[10px] sm:text-xs font-normal text-slate-400"> /head/year</span>
+                    ) : (
+                      <span className="text-[10px] sm:text-xs font-normal text-slate-400"> / month</span>
+                    )}
                   </p>
                 </div>
                 <div className="min-w-0">
@@ -510,6 +514,9 @@ export default function PropertyDetailPage() {
                                 {tier.balcony && <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-[11px] border border-amber-200 dark:border-amber-800">🌅 Private Balcony</span>}
                                 {tier.study_desk && <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 text-[11px] border border-purple-200 dark:border-purple-800">📚 Dedicated Desk</span>}
                                 {tier.personal_wardrobe && <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 text-[11px] border border-indigo-200 dark:border-indigo-800">🚪 Personal Wardrobe</span>}
+                                {tier.custom_amenities && tier.custom_amenities.length > 0 && tier.custom_amenities.map((amenity: string, aIdx: number) => (
+                                  <span key={aIdx} className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[11px] font-semibold border border-emerald-200 dark:border-emerald-800">✨ {amenity}</span>
+                                ))}
                               </div>
                             </div>
                           </div>
@@ -782,8 +789,20 @@ export default function PropertyDetailPage() {
             <div className="card p-6 sticky top-24 space-y-5">
               {/* Price */}
               <div className="text-center pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(property.rent)}</div>
-                <p className="text-slate-500 text-sm mt-0.5">/month + {formatCurrency(property.deposit)} deposit</p>
+                <div className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {(() => {
+                    if ((property.property_type === 'pg' || property.property_type === 'hostel') && property.sharing_configs?.length) {
+                      const rents = property.sharing_configs.map(c => c.rent)
+                      const min = Math.min(...rents)
+                      const max = Math.max(...rents)
+                      return min !== max ? `${formatCurrency(min)} - ${formatCurrency(max)}` : formatCurrency(min)
+                    }
+                    return formatCurrency(property.rent)
+                  })()}
+                </div>
+                <p className="text-slate-500 text-sm mt-0.5">
+                  {(property.property_type === 'pg' || property.property_type === 'hostel') ? '/head/year' : '/ month'} + {formatCurrency(property.deposit)} deposit
+                </p>
               </div>
 
               {/* Actions */}

@@ -194,7 +194,9 @@ export default function PropertiesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-2">Rent (₹/month)</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-2">
+                    {selectedType === 'pg' || selectedType === 'hostel' ? 'Rent (₹/head/year)' : 'Rent (₹/month)'}
+                  </label>
                   <div className="flex items-center gap-2">
                     <input type="number" value={minRent} onChange={e => setMinRent(e.target.value)} placeholder="Min" className="input-field py-1.5 w-24 text-sm" />
                     <span className="text-slate-400">–</span>

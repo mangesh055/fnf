@@ -167,9 +167,19 @@ export default function ScheduleVisitModal({ property, isOpen, onClose }: Schedu
                   </div>
                   <div className="text-right shrink-0">
                     <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
-                      {formatCurrency(property.rent)}
+                      {(() => {
+                        if ((property.property_type === 'pg' || property.property_type === 'hostel') && property.sharing_configs?.length) {
+                          const rents = property.sharing_configs.map(c => c.rent)
+                          const min = Math.min(...rents)
+                          const max = Math.max(...rents)
+                          return min !== max ? `${formatCurrency(min)} - ${formatCurrency(max)}` : formatCurrency(min)
+                        }
+                        return formatCurrency(property.rent)
+                      })()}
                     </span>
-                    <p className="text-[10px] text-slate-400">/month</p>
+                    <p className="text-[10px] text-slate-400">
+                      {(property.property_type === 'pg' || property.property_type === 'hostel') ? '/head/year' : '/ month'}
+                    </p>
                   </div>
                 </div>
 

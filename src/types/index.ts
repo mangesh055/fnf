@@ -52,6 +52,7 @@ export interface RoomSharingConfig {
   personal_wardrobe?: boolean
   images?: string[]
   video_url?: string
+  custom_amenities?: string[]
 }
 
 export interface FlatConfig {

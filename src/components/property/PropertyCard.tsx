@@ -232,7 +232,7 @@ export default function PropertyCard({ property, index = 0 }: PropertyCardProps)
                     })()}
                   </span>
                   <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                    {(property.property_type === 'pg' || property.property_type === 'hostel') ? '/head/mo' : '/mo'}
+                    {(property.property_type === 'pg' || property.property_type === 'hostel') ? '/head/year' : '/ month'}
                   </span>
                 </div>
                 <p className="text-[10px] font-medium text-slate-400 whitespace-nowrap truncate">Deposit: {formatCurrency(property.deposit)}</p>

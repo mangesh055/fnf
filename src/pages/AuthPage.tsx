@@ -127,7 +127,7 @@ export default function AuthPage() {
               alt="CampusNest Logo" 
               className="w-11 h-11 object-contain rounded-2xl shadow-glow" 
             />
-            <span className="text-2xl font-display font-bold text-white">CampusNest</span>
+            <span className="text-2xl font-display font-bold text-white">FlatsNFood</span>
           </Link>
 
           <h1 className="text-5xl font-display font-bold text-white leading-tight mb-4">
@@ -295,7 +295,7 @@ export default function AuthPage() {
             </form>
 
             <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed px-2 border-t border-slate-100 dark:border-slate-800 pt-4">
-              By continuing, you agree to CampusNest's{' '}
+              By continuing, you agree to FlatsNFood{' '}
               <Link to="/terms-conditions" className="underline hover:text-brand-500">Terms of Service</Link>{' '}
               and{' '}
               <Link to="/privacy-policy" className="underline hover:text-brand-500">Privacy Policy</Link>.

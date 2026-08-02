@@ -87,7 +87,18 @@ export default function ContactOwnerModal({ property, isOpen, onClose }: Contact
                   {property.address}, {property.city}
                 </p>
                 <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-1">
-                  {formatCurrency(property.rent)} <span className="text-[10px] font-normal text-slate-400">/month</span>
+                  {(() => {
+                    if ((property.property_type === 'pg' || property.property_type === 'hostel') && property.sharing_configs?.length) {
+                      const rents = property.sharing_configs.map(c => c.rent)
+                      const min = Math.min(...rents)
+                      const max = Math.max(...rents)
+                      return min !== max ? `${formatCurrency(min)} - ${formatCurrency(max)}` : formatCurrency(min)
+                    }
+                    return formatCurrency(property.rent)
+                  })()}
+                  <span className="text-[10px] font-normal text-slate-400">
+                    {(property.property_type === 'pg' || property.property_type === 'hostel') ? ' /head/year' : ' / month'}
+                  </span>
                 </p>
               </div>
             </div>

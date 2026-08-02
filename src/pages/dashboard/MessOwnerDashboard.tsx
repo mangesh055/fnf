@@ -1285,9 +1285,33 @@ export default function MessOwnerDashboard() {
                   if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
                       (pos) => {
-                        setLatitude(pos.coords.latitude)
-                        setLongitude(pos.coords.longitude)
-                        setGoogleMapsUrl(`https://www.google.com/maps/search/?api=1&query=${pos.coords.latitude},${pos.coords.longitude}`)
+                        const lat = pos.coords.latitude
+                        const lon = pos.coords.longitude
+                        setLatitude(lat)
+                        setLongitude(lon)
+                        setGoogleMapsUrl(`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`)
+
+                        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+                          .then(res => res.json())
+                          .then(data => {
+                            if (data && data.address) {
+                              const addrObj = data.address
+                              const parts = []
+                              if (addrObj.amenity) parts.push(addrObj.amenity)
+                              if (addrObj.building) parts.push(addrObj.building)
+                              if (addrObj.house_number) parts.push(addrObj.house_number)
+                              if (addrObj.road) parts.push(addrObj.road)
+                              if (addrObj.neighbourhood) parts.push(addrObj.neighbourhood)
+                              if (addrObj.suburb) parts.push(addrObj.suburb)
+                              if (addrObj.city_district) parts.push(addrObj.city_district)
+                              
+                              const addr = parts.length > 0 ? parts.join(', ') : (data.display_name || '')
+                              setAddress(addr)
+                            } else if (data && data.display_name) {
+                              setAddress(data.display_name)
+                            }
+                          })
+                          .catch(err => console.error("Error geocoding:", err))
                       },
                       (err) => alert('Unable to retrieve your location. Please ensure location permissions are granted.'),
                       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -2017,9 +2041,33 @@ export default function MessOwnerDashboard() {
                   if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
                       (pos) => {
-                        setLatitude(pos.coords.latitude)
-                        setLongitude(pos.coords.longitude)
-                        setGoogleMapsUrl(`https://www.google.com/maps/search/?api=1&query=${pos.coords.latitude},${pos.coords.longitude}`)
+                        const lat = pos.coords.latitude
+                        const lon = pos.coords.longitude
+                        setLatitude(lat)
+                        setLongitude(lon)
+                        setGoogleMapsUrl(`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`)
+
+                        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+                          .then(res => res.json())
+                          .then(data => {
+                            if (data && data.address) {
+                              const addrObj = data.address
+                              const parts = []
+                              if (addrObj.amenity) parts.push(addrObj.amenity)
+                              if (addrObj.building) parts.push(addrObj.building)
+                              if (addrObj.house_number) parts.push(addrObj.house_number)
+                              if (addrObj.road) parts.push(addrObj.road)
+                              if (addrObj.neighbourhood) parts.push(addrObj.neighbourhood)
+                              if (addrObj.suburb) parts.push(addrObj.suburb)
+                              if (addrObj.city_district) parts.push(addrObj.city_district)
+                              
+                              const addr = parts.length > 0 ? parts.join(', ') : (data.display_name || '')
+                              setAddress(addr)
+                            } else if (data && data.display_name) {
+                              setAddress(data.display_name)
+                            }
+                          })
+                          .catch(err => console.error("Error geocoding:", err))
                       },
                       (err) => alert('Unable to retrieve your location. Please ensure location permissions are granted.'),
                       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

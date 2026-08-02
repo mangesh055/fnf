@@ -577,7 +577,7 @@ export default function PropertyDetailPage() {
               )}
 
               {/* HOSTEL CONFIGURATION DISPLAY */}
-              {property.property_type === 'hostel' && (property.hostel_config || property.hostel_details) && (
+              {property.property_type === 'hostel' && (
                 <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
                   <h3 className="font-display font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                     <span>🛡️</span> Hostel Warden, Mess & Curfew Rules
@@ -586,24 +586,103 @@ export default function PropertyDetailPage() {
                     <div>
                       <p className="text-xs text-slate-500">Resident Warden</p>
                       <p className="font-bold text-purple-600 dark:text-purple-400">Available On-Site</p>
-                      {property.hostel_config?.warden_phone && <p className="text-xs text-slate-500 mt-0.5">📞 {property.hostel_config.warden_phone}</p>}
+                      <p className="text-xs text-slate-500 mt-0.5">📞 {property.hostel_config?.warden_phone || property.contact_phone || 'Available'}</p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">Night Curfew</p>
                       <p className="font-bold text-red-600 dark:text-red-400">
-                        {property.hostel_config?.curfew_time === 'no_curfew' ? 'No Curfew (24/7)' : (property.hostel_config?.curfew_time || property.hostel_details?.curfew_time || '9:30 PM')}
+                        {property.hostel_config?.curfew_time === 'no_curfew' ? 'No Curfew (24/7)' : `${property.hostel_config?.curfew_time || '10:00 PM'} Curfew`}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">Mess / Dining</p>
                       <p className="font-bold text-slate-800 dark:text-slate-200 capitalize">
-                        {property.hostel_config?.mess_option?.replace('_', ' ') || (property.hostel_details?.mess_included ? 'Included' : 'Optional')}
+                        {(() => {
+                          const option = property.hostel_config?.mess_option || 'included'
+                          if (option === 'included') return 'Meals Included in Rent'
+                          if (option === 'extra_charge') return 'Available (Extra Charge)'
+                          return 'Not Available'
+                        })()}
+                      </p>
+                      {property.hostel_config?.mess_option === 'extra_charge' && property.hostel_config?.mess_charges !== undefined && (
+                        <p className="text-xs text-slate-500 mt-0.5">💰 {formatCurrency(property.hostel_config.mess_charges)} / month</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Housekeeping</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 capitalize">
+                        {(property.hostel_config?.housekeeping || 'daily').replace(/_/g, ' ')}
                       </p>
                     </div>
-                    {property.hostel_config?.meals_offered && property.hostel_config.meals_offered.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-500">Laundry Facility</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 capitalize">
+                        {(property.hostel_config?.laundry || 'none').replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                    {(property.hostel_config?.mess_option !== 'not_available') && (
                       <div className="col-span-2 sm:col-span-3">
                         <p className="text-xs text-slate-500">Meals Served Daily</p>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200 capitalize">{property.hostel_config.meals_offered.join(' • ')}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 capitalize">
+                          {(property.hostel_config?.meals_offered || ['breakfast', 'lunch', 'dinner']).map(m => m.replace(/_/g, ' ')).join(' • ')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* PG CONFIGURATION DISPLAY */}
+              {property.property_type === 'pg' && (
+                <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                  <h3 className="font-display font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span>🏠</span> PG Facilities, Food & Curfew Rules
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900">
+                    <div>
+                      <p className="text-xs text-slate-500">Food / Mess</p>
+                      <p className="font-bold text-indigo-600 dark:text-indigo-400 capitalize">
+                        {(() => {
+                          const option = property.pg_config?.food_option || 'included'
+                          if (option === 'included') return 'Meals Included in Rent'
+                          if (option === 'extra_charge') return 'Available (Extra Charge)'
+                          return 'Not Available'
+                        })()}
+                      </p>
+                      {property.pg_config?.food_option === 'extra_charge' && property.pg_config?.mess_charges !== undefined && (
+                        <p className="text-xs text-slate-500 mt-0.5">💰 {formatCurrency(property.pg_config.mess_charges)} / month</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Night Curfew</p>
+                      <p className="font-bold text-red-600 dark:text-red-400">
+                        {property.pg_config?.curfew_time === 'no_curfew' ? 'No Curfew (24/7)' : `${property.pg_config?.curfew_time || '10:00 PM'} Curfew`}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Food Category</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 capitalize">
+                        {property.pg_config?.food_type || 'veg'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Housekeeping</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 capitalize">
+                        {(property.pg_config?.housekeeping || 'daily').replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Laundry Facility</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 capitalize">
+                        {(property.pg_config?.laundry || 'none').replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                    {(property.pg_config?.food_option !== 'not_available') && (
+                      <div className="col-span-2 sm:col-span-3">
+                        <p className="text-xs text-slate-500">Meals Served Daily</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 capitalize">
+                          {(property.pg_config?.meals_offered || ['breakfast', 'lunch', 'dinner']).map(m => m.replace(/_/g, ' ')).join(' • ')}
+                        </p>
                       </div>
                     )}
                   </div>

@@ -100,6 +100,9 @@ export default function OwnerDashboard() {
     curfew_time: '21:30',
     mess_option: 'included',
     meals_offered: ['breakfast', 'lunch', 'evening_snacks', 'dinner'],
+    mess_charges: 0,
+    housekeeping: 'daily',
+    laundry: 'none',
   })
 
   // PG Specific General Config State
@@ -110,6 +113,8 @@ export default function OwnerDashboard() {
     curfew_time: '22:30',
     housekeeping: 'daily',
     laundry: 'free_washing_machine',
+    meals_offered: ['breakfast', 'lunch', 'dinner'],
+    mess_charges: 0,
   })
 
   useEffect(() => {
@@ -130,11 +135,26 @@ export default function OwnerDashboard() {
     }
   }, [profile, editingId])
 
-  // We show properties associated with the active property owner
+  // We show properties associated with the active property owner (or all if admin)
   const myProperties = profile?.id
-    ? properties.filter(p => p.owner_id === profile.id || p.owner_id === 'owner1' || !p.owner_id)
+    ? (profile.role === 'admin'
+        ? properties
+        : properties.filter(p => p.owner_id === profile.id || p.owner_id === 'owner1' || !p.owner_id))
     : properties
   const location = useLocation()
+
+  // Admin Auto-Edit from Admin Dashboard
+  const editParam = new URLSearchParams(location.search).get('edit')
+  useEffect(() => {
+    if (editParam && properties.length > 0) {
+      const propToEdit = properties.find(p => p.id === editParam)
+      if (propToEdit) {
+        handleEdit(propToEdit)
+        // Clean URL query parameters
+        window.history.replaceState({}, document.title, location.pathname)
+      }
+    }
+  }, [editParam, properties])
   const isVisitsTab = location.pathname.includes('/owner/visits')
   const isListingsTab = location.pathname.includes('/owner/listings')
   const isOverviewTab = !isVisitsTab && !isListingsTab
@@ -372,6 +392,9 @@ export default function OwnerDashboard() {
         curfew_time: '22:00',
         mess_option: 'included',
         meals_offered: ['breakfast', 'lunch', 'dinner'],
+        mess_charges: 0,
+        housekeeping: 'daily',
+        laundry: 'none',
         category_configs: [],
       }
     )
@@ -379,6 +402,8 @@ export default function OwnerDashboard() {
       property.pg_config || {
         curfew_time: 'no_curfew',
         food_option: 'included',
+        meals_offered: ['breakfast', 'lunch', 'dinner'],
+        mess_charges: 0,
         housekeeping: 'daily',
         laundry: 'none',
         sharing_configs: [],
@@ -1432,6 +1457,104 @@ export default function OwnerDashboard() {
                             </select>
                           </div>
                         </div>
+
+                        {/* Housekeeping & Laundry for PG */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Housekeeping Frequency</label>
+                            <select
+                              value={pgConfig?.housekeeping || 'daily'}
+                              onChange={(e) => setPgConfig(prev => ({ ...prev, housekeeping: e.target.value as any }))}
+                              className="input-field py-1 text-xs"
+                            >
+                              <option value="daily">🧹 Daily Housekeeping</option>
+                              <option value="alternate_days">🧹 Alternate Days</option>
+                              <option value="weekly">🧹 Weekly Housekeeping</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Laundry Facility</label>
+                            <select
+                              value={pgConfig?.laundry || 'none'}
+                              onChange={(e) => setPgConfig(prev => ({ ...prev, laundry: e.target.value as any }))}
+                              className="input-field py-1 text-xs"
+                            >
+                              <option value="none">🧺 No Laundry Facility</option>
+                              <option value="free_washing_machine">🧺 Free Washing Machine</option>
+                              <option value="paid_per_load">🧺 Paid / Per Load Charges</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Extended Food Options for PG */}
+                        {(pgConfig?.food_option === 'included' || pgConfig?.food_option === 'extra_charge') && (
+                          <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-indigo-100 dark:border-slate-800 space-y-3 mt-2">
+                            <div className="flex flex-wrap gap-4 items-center">
+                              {pgConfig?.food_option === 'extra_charge' && (
+                                <div className="w-full sm:w-auto flex-1 min-w-[200px]">
+                                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Monthly Mess Charges (₹)</label>
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={pgConfig?.mess_charges !== undefined ? pgConfig.mess_charges : ''}
+                                    onChange={(e) => {
+                                      const cleanStr = e.target.value.replace(/\D/g, '')
+                                      const val = cleanStr === '' ? '' : Number(cleanStr)
+                                      setPgConfig(prev => ({ ...prev, mess_charges: val as any }))
+                                    }}
+                                    placeholder="e.g. 3000"
+                                    className="input-field py-1 text-xs font-semibold"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-[200px]">
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">Food Category</label>
+                                <div className="flex gap-2">
+                                  {['veg', 'non_veg', 'both'].map((type) => (
+                                    <button
+                                      key={type}
+                                      type="button"
+                                      onClick={() => setPgConfig(prev => ({ ...prev, food_type: type as any }))}
+                                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${pgConfig?.food_type === type ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                    >
+                                      {type === 'veg' ? '🟢 Veg' : type === 'non_veg' ? '🔴 Non-Veg' : '🟡 Both'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-semibold text-slate-500 mb-1.5">Meals Provided</label>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { key: 'breakfast', label: '🍳 Breakfast' },
+                                  { key: 'lunch', label: '🍱 Lunch' },
+                                  { key: 'evening_snacks', label: '☕ Snacks' },
+                                  { key: 'dinner', label: '🍽️ Dinner' }
+                                ].map((meal) => {
+                                  const meals = pgConfig?.meals_offered || []
+                                  const isSelected = meals.includes(meal.key as any)
+                                  return (
+                                    <button
+                                      key={meal.key}
+                                      type="button"
+                                      onClick={() => {
+                                        const newMeals = isSelected
+                                          ? meals.filter(m => m !== meal.key)
+                                          : [...meals, meal.key as any]
+                                        setPgConfig(prev => ({ ...prev, meals_offered: newMeals }))
+                                      }}
+                                      className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${isSelected ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                    >
+                                      {meal.label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1702,8 +1825,8 @@ export default function OwnerDashboard() {
                           })}
                         </div>
 
-                        {/* Hostel Warden & Curfew */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-200 dark:border-purple-800/60">
+                        {/* Hostel Warden, Curfew & Food / Mess */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-purple-200 dark:border-purple-800/60">
                           <div>
                             <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Hostel Warden Phone</label>
                             <input
@@ -1728,7 +1851,101 @@ export default function OwnerDashboard() {
                               <option value="no_curfew">No Curfew</option>
                             </select>
                           </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Food / Mess Facility</label>
+                            <select
+                              value={hostelConfig?.mess_option || 'included'}
+                              onChange={(e) => setHostelConfig(prev => ({ ...prev, mess_option: e.target.value as any }))}
+                              className="input-field py-1 text-xs"
+                            >
+                              <option value="included">Meals Included in Rent</option>
+                              <option value="extra_charge">Available (Extra Charge)</option>
+                              <option value="not_available">Not Available</option>
+                            </select>
+                          </div>
                         </div>
+
+                        {/* Housekeeping & Laundry for Hostel */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Housekeeping Frequency</label>
+                            <select
+                              value={hostelConfig?.housekeeping || 'daily'}
+                              onChange={(e) => setHostelConfig(prev => ({ ...prev, housekeeping: e.target.value as any }))}
+                              className="input-field py-1 text-xs"
+                            >
+                              <option value="daily">🧹 Daily Housekeeping</option>
+                              <option value="alternate_days">🧹 Alternate Days</option>
+                              <option value="weekly">🧹 Weekly Housekeeping</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Laundry Facility</label>
+                            <select
+                              value={hostelConfig?.laundry || 'none'}
+                              onChange={(e) => setHostelConfig(prev => ({ ...prev, laundry: e.target.value as any }))}
+                              className="input-field py-1 text-xs"
+                            >
+                              <option value="none">🧺 No Laundry Facility</option>
+                              <option value="free_washing_machine">🧺 Free Washing Machine</option>
+                              <option value="paid_per_load">🧺 Paid / Per Load Charges</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Extended Food Options for Hostel */}
+                        {(hostelConfig?.mess_option === 'included' || hostelConfig?.mess_option === 'extra_charge') && (
+                          <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-purple-100 dark:border-slate-800 space-y-3 mt-2">
+                            <div className="flex flex-wrap gap-4 items-center">
+                              {hostelConfig?.mess_option === 'extra_charge' && (
+                                <div className="w-full sm:w-auto flex-1 min-w-[200px]">
+                                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">Monthly Mess Charges (₹)</label>
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={hostelConfig?.mess_charges !== undefined ? hostelConfig.mess_charges : ''}
+                                    onChange={(e) => {
+                                      const cleanStr = e.target.value.replace(/\D/g, '')
+                                      const val = cleanStr === '' ? '' : Number(cleanStr)
+                                      setHostelConfig(prev => ({ ...prev, mess_charges: val as any }))
+                                    }}
+                                    placeholder="e.g. 3000"
+                                    className="input-field py-1 text-xs font-semibold"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-[200px]">
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-1">Meals Provided</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {[
+                                    { key: 'breakfast', label: '🍳 Breakfast' },
+                                    { key: 'lunch', label: '🍱 Lunch' },
+                                    { key: 'evening_snacks', label: '☕ Snacks' },
+                                    { key: 'dinner', label: '🍽️ Dinner' }
+                                  ].map((meal) => {
+                                    const meals = hostelConfig?.meals_offered || []
+                                    const isSelected = meals.includes(meal.key as any)
+                                    return (
+                                      <button
+                                        key={meal.key}
+                                        type="button"
+                                        onClick={() => {
+                                          const newMeals = isSelected
+                                            ? meals.filter(m => m !== meal.key)
+                                            : [...meals, meal.key as any]
+                                          setHostelConfig(prev => ({ ...prev, meals_offered: newMeals }))
+                                        }}
+                                        className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${isSelected ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}
+                                      >
+                                        {meal.label}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 

@@ -74,6 +74,9 @@ export interface HostelConfig {
   curfew_time: 'no_curfew' | '21:30' | '22:00' | '22:30' | '23:00'
   mess_option: 'included' | 'extra_charge' | 'not_available'
   meals_offered?: ('breakfast' | 'lunch' | 'evening_snacks' | 'dinner')[]
+  mess_charges?: number
+  housekeeping?: 'daily' | 'alternate_days' | 'weekly'
+  laundry?: 'free_washing_machine' | 'paid_per_load' | 'none'
 }
 
 export interface PGConfig {
@@ -83,6 +86,8 @@ export interface PGConfig {
   curfew_time: 'no_curfew' | '21:30' | '22:00' | '22:30' | '23:00'
   housekeeping: 'daily' | 'alternate_days' | 'weekly'
   laundry: 'free_washing_machine' | 'paid_per_load' | 'none'
+  meals_offered?: ('breakfast' | 'lunch' | 'evening_snacks' | 'dinner')[]
+  mess_charges?: number
 }
 
 export interface Property {

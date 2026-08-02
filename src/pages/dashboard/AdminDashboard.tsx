@@ -826,6 +826,12 @@ export default function AdminDashboard() {
                     )}
                   </td>
                   <td className="py-3 text-right flex gap-2 justify-end">
+                    <Link
+                      to={`/dashboard/owner?edit=${prop.id}`}
+                      className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs font-bold transition-colors inline-block"
+                    >
+                      Edit
+                    </Link>
                     {prop.verified ? (
                       <button onClick={() => handleRejectProperty(prop.id, prop.title)} className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded text-xs font-bold transition-colors">Revoke</button>
                     ) : prop.rejected ? (

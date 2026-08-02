@@ -124,7 +124,7 @@ export default function AuthPage() {
           <Link to="/" className="flex items-center gap-3 mb-12">
             <img 
               src={logoImg} 
-              alt="CampusNest Logo" 
+              alt="FlatsNFood Logo" 
               className="w-11 h-11 object-contain rounded-2xl shadow-glow" 
             />
             <span className="text-2xl font-display font-bold text-white">FlatsNFood</span>

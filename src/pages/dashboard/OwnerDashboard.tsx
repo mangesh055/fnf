@@ -421,13 +421,19 @@ export default function OwnerDashboard() {
       if (c.study_desk && formData.amenities?.study_table !== false) consolidatedAmenities.study_table = true
     })
 
-    const cleanedSharingConfigs = sharingConfigs.map(c => ({
-      ...c,
-      rent: c.rent === '' ? 0 : (Number(c.rent) || 0),
-      deposit: c.deposit === '' ? 0 : (Number(c.deposit) || 0),
-      available_beds: c.available_beds === '' ? 0 : (Number(c.available_beds) || 0),
-      total_beds: c.total_beds === '' ? 0 : (Number(c.total_beds) || 0),
-    }))
+    const cleanedSharingConfigs = sharingConfigs.map(c => {
+      const rentVal = c.rent as any
+      const depositVal = c.deposit as any
+      const availVal = c.available_beds as any
+      const totalVal = c.total_beds as any
+      return {
+        ...c,
+        rent: rentVal === '' ? 0 : (Number(rentVal) || 0),
+        deposit: depositVal === '' ? 0 : (Number(depositVal) || 0),
+        available_beds: availVal === '' ? 0 : (Number(availVal) || 0),
+        total_beds: totalVal === '' ? 0 : (Number(totalVal) || 0),
+      }
+    })
 
     const propertyData: any = {
       title: formData.title || 'Cozy Accommodation',

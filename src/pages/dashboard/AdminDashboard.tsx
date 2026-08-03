@@ -57,6 +57,8 @@ export default function AdminDashboard() {
   const [messSearch, setMessSearch] = useState('')
   const [propSearch, setPropSearch] = useState('')
   const [communitySearch, setCommunitySearch] = useState('')
+  // Tracks what admin is typing in serial-no inputs (keyed by property id)
+  const [serialNoInputs, setSerialNoInputs] = useState<Record<string, string>>({})
 
   const [overviewStats, setOverviewStats] = useState({
     totalStudents: 0,
@@ -132,9 +134,15 @@ export default function AdminDashboard() {
   const fetchProperties = async () => {
     setLoadingProps(true)
     try {
-      const res = await gatewayFetch('/properties')
+      const res = await gatewayFetch('/properties?limit=1000')
       if (res.success && Array.isArray(res.data)) {
-        setProperties(res.data)
+        // Sort by serial_no ascending so admin sees ranking order immediately
+        const sorted = [...res.data].sort((a: any, b: any) => {
+          const aNo = a.serial_no ?? 999999
+          const bNo = b.serial_no ?? 999999
+          return aNo - bNo
+        })
+        setProperties(sorted)
       } else {
         setProperties([])
       }
@@ -836,11 +844,28 @@ export default function AdminDashboard() {
                   <td className="py-3">
                     <input 
                       type="number"
-                      placeholder="Standard"
-                      defaultValue={prop.serial_no && prop.serial_no !== 999999 ? prop.serial_no : ''}
-                      onBlur={async (e) => {
-                        const val = e.target.value ? parseInt(e.target.value) : 999999
-                        await handleUpdateSerialNo(prop.id, val)
+                      placeholder="—"
+                      value={
+                        serialNoInputs[prop.id] !== undefined
+                          ? serialNoInputs[prop.id]
+                          : (prop.serial_no !== undefined && prop.serial_no !== 999999 ? String(prop.serial_no) : '')
+                      }
+                      onChange={(e) => {
+                        // Only update local input state — do NOT touch properties array here
+                        setSerialNoInputs(prev => ({ ...prev, [prop.id]: e.target.value }))
+                      }}
+                      onBlur={async () => {
+                        const raw = serialNoInputs[prop.id]
+                        // If admin didn't type anything yet, nothing to save
+                        if (raw === undefined) return
+                        const parsed = raw.trim() === '' ? 999999 : parseInt(raw, 10)
+                        const finalVal = isNaN(parsed) ? 999999 : parsed
+                        // Clear local input state
+                        setSerialNoInputs(prev => { const next = { ...prev }; delete next[prop.id]; return next })
+                        // Persist to DB
+                        await handleUpdateSerialNo(prop.id, finalVal)
+                        // Re-sort table after save so ranking is immediately visible
+                        setProperties(prev => [...prev].sort((a: any, b: any) => (a.serial_no ?? 999999) - (b.serial_no ?? 999999)))
                       }}
                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
                       className="w-20 px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold focus:outline-none focus:border-brand-500 text-center"

@@ -8,6 +8,27 @@ import { useAuthStore } from '../store/authStore'
 import type { PropertyType } from '../types'
 import { cn, propertyTypeLabels } from '../lib/utils'
 
+// Lightweight seeded PRNG (mulberry32)
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed)
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
+    return ((t ^ t >>> 14) >>> 0) / 4294967296
+  }
+}
+
+// Deterministic Fisher-Yates shuffle using seeded random
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const a = [...arr]
+  const rand = mulberry32(seed)
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 const propertyTypes = [
   { value: '' as PropertyType | '', label: 'All' },
   { value: 'pg' as PropertyType, label: 'PG' },
@@ -54,8 +75,10 @@ export default function PropertiesPage() {
   const [noBrokerageOnly, setNoBrokerageOnly] = useState(false)
 
   const { properties, loadProperties, hasMore, loading } = usePropertyStore()
-  const { initialized, user } = useAuthStore()
+  const { initialized, user, profile } = useAuthStore()
   const [currentPage, setCurrentPage] = useState(1)
+  // Generate a fresh random seed once per page visit so unranked listings shuffle on every load
+  const [sessionSeed] = useState(() => Math.floor(Math.random() * 0xFFFFFFFF))
 
   useEffect(() => {
     void loadProperties({ page: 1, limit: 12, city: city || undefined })
@@ -163,37 +186,44 @@ export default function PropertiesPage() {
         return Boolean(pAm[key])
       })
     })
-    let combined: any[] = []
-    if (sortBy === 'relevance') {
-      combined = [...result].sort((a, b) => properties.indexOf(a) - properties.indexOf(b))
+    // Split into premium (admin-assigned priority) and standard posts
+    const premiumPosts = result.filter(p => p.serial_no !== undefined && p.serial_no < 999999)
+    const standardPosts = result.filter(p => p.serial_no === undefined || p.serial_no >= 999999)
+
+    // Premium posts always sort by serial_no ascending (admin controls this — never shuffled)
+    premiumPosts.sort((a, b) => (a.serial_no ?? 999999) - (b.serial_no ?? 999999))
+
+    let orderedStandard: typeof standardPosts
+
+    if (sortBy === 'rent_low') {
+      orderedStandard = [...standardPosts].sort((a, b) => a.rent - b.rent)
+    } else if (sortBy === 'rent_high') {
+      orderedStandard = [...standardPosts].sort((a, b) => b.rent - a.rent)
+    } else if (sortBy === 'rating') {
+      orderedStandard = [...standardPosts].sort((a, b) => b.rating - a.rating)
     } else {
-      const premiumPosts = result.filter(p => p.serial_no !== undefined && p.serial_no < 999999)
-      const standardPosts = result.filter(p => p.serial_no === undefined || p.serial_no >= 999999)
-
-      premiumPosts.sort((a, b) => (a.serial_no ?? 999999) - (b.serial_no ?? 999999))
-
-      if (sortBy === 'rent_low') {
-        standardPosts.sort((a, b) => a.rent - b.rent)
-      } else if (sortBy === 'rent_high') {
-        standardPosts.sort((a, b) => b.rent - a.rent)
-      } else if (sortBy === 'rating') {
-        standardPosts.sort((a, b) => b.rating - a.rating)
+      if (profile?.role === 'student') {
+        // Students: shuffle freshly each session for fair discovery
+        orderedStandard = seededShuffle(standardPosts, sessionSeed)
+      } else {
+        // Owners / Admins / Guests: show newest first
+        orderedStandard = [...standardPosts].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
       }
-      combined = [...premiumPosts, ...standardPosts]
     }
 
-    if (user?.id) {
-      combined.sort((a, b) => {
-        const aIsOwn = String(a.owner_id) === String(user.id)
-        const bIsOwn = String(b.owner_id) === String(user.id)
-        if (aIsOwn && !bIsOwn) return -1
-        if (!aIsOwn && bIsOwn) return 1
-        return 0
-      })
+    // For property owners: pin their own listings at the absolute top of the entire list
+    // (above even admin-ranked premium posts from other owners)
+    if (profile?.role === 'property_owner' && user?.id) {
+      const all = [...premiumPosts, ...orderedStandard]
+      const ownPosts = all.filter(p => String(p.owner_id) === String(user.id))
+      const otherPosts = all.filter(p => String(p.owner_id) !== String(user.id))
+      return [...ownPosts, ...otherPosts]
     }
 
-    return combined
-  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, noBrokerageOnly, properties, user])
+    // Students: own posts float to top of standard section (above premium from others is not done for students)
+    // All other roles: no special own-post treatment
+    return [...premiumPosts, ...orderedStandard]
+  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, noBrokerageOnly, properties, user, profile])
 
   const activeFilters = [selectedType, gender, minRent, maxRent, availableOnly, noBrokerageOnly, city].filter(Boolean).length + Object.values(amenityFilters).filter(Boolean).length
 

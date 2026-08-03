@@ -30,12 +30,12 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 }
 
 const propertyTypes = [
-  { value: '' as PropertyType | '', label: 'All' },
-  { value: 'pg' as PropertyType, label: 'PG' },
-  { value: 'hostel' as PropertyType, label: 'Hostel' },
-  { value: 'flat' as PropertyType, label: 'Flat' },
-  { value: 'shared_room' as PropertyType, label: 'Shared Room' },
-  { value: 'private_room' as PropertyType, label: 'Private Room' },
+  { value: 'all', type: 'type', paramValue: '', label: 'All' },
+  { value: 'pg', type: 'type', paramValue: 'pg', label: 'PG' },
+  { value: 'hostel', type: 'type', paramValue: 'hostel', label: 'Hostel' },
+  { value: 'flat', type: 'type', paramValue: 'flat', label: 'Flat' },
+  { value: 'boys', type: 'gender', paramValue: 'male', label: '👨 Boys' },
+  { value: 'girls', type: 'gender', paramValue: 'female', label: '👩 Girls' },
 ]
 
 const genderOptions = [
@@ -302,22 +302,54 @@ export default function PropertiesPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Type Tabs */}
+        {/* Type & Gender Tabs */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6">
-          {propertyTypes.map(t => (
-            <button key={t.value} onClick={() => setSelectedType(t.value)}
-              className={cn('px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap border transition-all',
-                selectedType === t.value ? 'bg-brand-500 text-white border-brand-500' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-brand-400')}>
-              {t.label}
-            </button>
-          ))}
+          {propertyTypes.map(t => {
+            const isActive = t.value === 'all' 
+              ? (!selectedType && !gender)
+              : t.type === 'type' 
+                ? (selectedType === t.paramValue)
+                : (gender === t.paramValue)
+
+            return (
+              <button
+                key={t.value}
+                onClick={() => {
+                  if (t.value === 'all') {
+                    setSelectedType('')
+                    setGender('')
+                  } else if (t.type === 'type') {
+                    setSelectedType(t.paramValue as PropertyType)
+                    setGender('')
+                  } else if (t.type === 'gender') {
+                    setGender(t.paramValue)
+                    setSelectedType('')
+                  }
+                }}
+                className={cn(
+                  'px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap border transition-all',
+                  isActive 
+                    ? 'bg-brand-500 text-white border-brand-500' 
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-brand-400'
+                )}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Results Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
-              {selectedType ? propertyTypeLabels[selectedType] : 'All Properties'}
+              {selectedType 
+                ? `${propertyTypeLabels[selectedType]}s` 
+                : gender === 'male' 
+                  ? 'Boys Accommodations' 
+                  : gender === 'female' 
+                    ? 'Girls Accommodations' 
+                    : 'All Accommodations'}
             </h1>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-sm text-slate-500">{filtered.length} results found</p>

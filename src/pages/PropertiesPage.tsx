@@ -63,11 +63,20 @@ export default function PropertiesPage() {
   }, [loadProperties, city])
 
   const handleLoadMore = async () => {
+    const lastIndexBeforeLoad = filtered.length - 1
     const nextPage = currentPage + 1
     const moreAvailable = await loadProperties({ page: nextPage, limit: 12, city: city || undefined }, true)
-    if (moreAvailable || true) {
-      setCurrentPage(nextPage)
-    }
+    
+    setCurrentPage(nextPage)
+
+    // Smooth scroll to the first newly loaded card after rendering
+    setTimeout(() => {
+      const nextCardIndex = lastIndexBeforeLoad + 1
+      const element = document.getElementById(`property-card-${nextCardIndex}`)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 150)
   }
 
   // Synchronize state when searchParams change
@@ -312,7 +321,11 @@ export default function PropertiesPage() {
         ) : (
           <>
             <div className={cn('grid gap-6', viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-3xl')}>
-              {filtered.map((property, i) => <PropertyCard key={property.id} property={property} index={i} />)}
+              {filtered.map((property, i) => (
+                <div key={property.id} id={`property-card-${i}`}>
+                  <PropertyCard property={property} index={i} />
+                </div>
+              ))}
             </div>
             {hasMore && (
               <div className="flex justify-center mt-8">

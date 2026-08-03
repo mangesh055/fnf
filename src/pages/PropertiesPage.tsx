@@ -81,26 +81,9 @@ export default function PropertiesPage() {
   const [sessionSeed] = useState(() => Math.floor(Math.random() * 0xFFFFFFFF))
 
   useEffect(() => {
-    void loadProperties({ page: 1, limit: 12, city: city || undefined })
+    void loadProperties({ page: 1, limit: 1000, city: city || undefined })
     setCurrentPage(1)
   }, [loadProperties, city])
-
-  const handleLoadMore = async () => {
-    const lastIndexBeforeLoad = filtered.length - 1
-    const nextPage = currentPage + 1
-    const moreAvailable = await loadProperties({ page: nextPage, limit: 12, city: city || undefined }, true)
-    
-    setCurrentPage(nextPage)
-
-    // Smooth scroll to the first newly loaded card after rendering
-    setTimeout(() => {
-      const nextCardIndex = lastIndexBeforeLoad + 1
-      const element = document.getElementById(`property-card-${nextCardIndex}`)
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    }, 150)
-  }
 
   // Synchronize state when searchParams change
   useEffect(() => {
@@ -362,33 +345,13 @@ export default function PropertiesPage() {
             <button onClick={() => { setSearch(''); setSelectedType(''); setGender(''); setMinRent(''); setMaxRent(''); setCity(''); setAmenityFilters({}); setAvailableOnly(false); setNoBrokerageOnly(false); }} className="btn-primary">Clear Filters</button>
           </div>
         ) : (
-          <>
-            <div className={cn('grid gap-6', viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-3xl')}>
-              {filtered.map((property, i) => (
-                <div key={property.id} id={`property-card-${i}`}>
-                  <PropertyCard property={property} index={i} />
-                </div>
-              ))}
-            </div>
-            {hasMore && (
-              <div className="flex justify-center mt-8">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loading}
-                  className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white font-semibold rounded-xl shadow-md transition-all flex items-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent animate-infinite" />
-                      Loading...
-                    </>
-                  ) : (
-                    'View More'
-                  )}
-                </button>
+          <div className={cn('grid gap-6', viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-3xl')}>
+            {filtered.map((property, i) => (
+              <div key={property.id} id={`property-card-${i}`}>
+                <PropertyCard property={property} index={i} />
               </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
       </div>
     </div>

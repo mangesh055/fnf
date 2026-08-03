@@ -36,6 +36,7 @@ export interface IProperty extends Document {
   brokerage_applied?: boolean;
   brokerage_amount?: number;
   is_student_request?: boolean;
+  serial_no?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -77,6 +78,7 @@ const PropertySchema: Schema = new Schema(
     brokerage_applied: { type: Boolean, default: false },
     brokerage_amount: { type: Number, default: 0 },
     is_student_request: { type: Boolean, default: false },
+    serial_no: { type: Number, default: 999999 },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

@@ -53,12 +53,22 @@ export default function PropertiesPage() {
   const [availableOnly, setAvailableOnly] = useState(false)
   const [noBrokerageOnly, setNoBrokerageOnly] = useState(false)
 
-  const { properties, loadProperties } = usePropertyStore()
-  const { initialized } = useAuthStore()
+  const { properties, loadProperties, hasMore, loading } = usePropertyStore()
+  const { initialized, user } = useAuthStore()
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
-    void loadProperties()
-  }, [loadProperties])
+    void loadProperties({ page: 1, limit: 12, city: city || undefined })
+    setCurrentPage(1)
+  }, [loadProperties, city])
+
+  const handleLoadMore = async () => {
+    const nextPage = currentPage + 1
+    const moreAvailable = await loadProperties({ page: nextPage, limit: 12, city: city || undefined }, true)
+    if (moreAvailable || true) {
+      setCurrentPage(nextPage)
+    }
+  }
 
   // Synchronize state when searchParams change
   useEffect(() => {
@@ -144,11 +154,36 @@ export default function PropertiesPage() {
         return Boolean(pAm[key])
       })
     })
-    if (sortBy === 'rent_low') result.sort((a, b) => a.rent - b.rent)
-    else if (sortBy === 'rent_high') result.sort((a, b) => b.rent - a.rent)
-    else if (sortBy === 'rating') result.sort((a, b) => b.rating - a.rating)
-    return result
-  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, noBrokerageOnly, properties])
+    const premiumPosts = result.filter(p => p.serial_no !== undefined && p.serial_no < 999999)
+    const standardPosts = result.filter(p => p.serial_no === undefined || p.serial_no >= 999999)
+
+    premiumPosts.sort((a, b) => (a.serial_no ?? 999999) - (b.serial_no ?? 999999))
+
+    if (sortBy === 'rent_low') {
+      standardPosts.sort((a, b) => a.rent - b.rent)
+    } else if (sortBy === 'rent_high') {
+      standardPosts.sort((a, b) => b.rent - a.rent)
+    } else if (sortBy === 'rating') {
+      standardPosts.sort((a, b) => b.rating - a.rating)
+    } else {
+      // Relevance / Default: Sort by created_at DESC
+      standardPosts.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    }
+
+    let combined = [...premiumPosts, ...standardPosts]
+
+    if (user?.id) {
+      combined.sort((a, b) => {
+        const aIsOwn = String(a.owner_id) === String(user.id)
+        const bIsOwn = String(b.owner_id) === String(user.id)
+        if (aIsOwn && !bIsOwn) return -1
+        if (!aIsOwn && bIsOwn) return 1
+        return 0
+      })
+    }
+
+    return combined
+  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, noBrokerageOnly, properties, user])
 
   const activeFilters = [selectedType, gender, minRent, maxRent, availableOnly, noBrokerageOnly, city].filter(Boolean).length + Object.values(amenityFilters).filter(Boolean).length
 
@@ -275,9 +310,29 @@ export default function PropertiesPage() {
             <button onClick={() => { setSearch(''); setSelectedType(''); setGender(''); setMinRent(''); setMaxRent(''); setCity(''); setAmenityFilters({}); setAvailableOnly(false); setNoBrokerageOnly(false); }} className="btn-primary">Clear Filters</button>
           </div>
         ) : (
-          <div className={cn('grid gap-6', viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-3xl')}>
-            {filtered.map((property, i) => <PropertyCard key={property.id} property={property} index={i} />)}
-          </div>
+          <>
+            <div className={cn('grid gap-6', viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-3xl')}>
+              {filtered.map((property, i) => <PropertyCard key={property.id} property={property} index={i} />)}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white font-semibold rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent animate-infinite" />
+                      Loading...
+                    </>
+                  ) : (
+                    'View More'
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

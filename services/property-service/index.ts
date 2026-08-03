@@ -10,7 +10,17 @@ import Review from './Review';
 dotenv.config();
 
 // Connect to MongoDB
-connectDB();
+connectDB().then(async () => {
+  try {
+    const result = await Property.updateMany(
+      { serial_no: { $exists: false } },
+      { $set: { serial_no: 999999 } }
+    );
+    console.log(`[Database Migration]: Updated ${result.modifiedCount} properties with default serial_no.`);
+  } catch (err) {
+    console.error('[Database Migration Error]:', err);
+  }
+});
 
 const app = express();
 const PORT = process.env.PROPERTY_SERVICE_PORT || 5002;
@@ -49,7 +59,7 @@ app.get('/api/properties', async (req: Request, res: Response) => {
       .select(selectFields)
       .skip((page - 1) * limit)
       .limit(limit)
-      .sort({ created_at: -1 });
+      .sort({ serial_no: 1, created_at: -1 });
 
     res.json({
       success: true,

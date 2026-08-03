@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useLocation, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Building2, Utensils, TrendingUp, Shield, AlertTriangle, CheckCircle, XCircle, RefreshCw, Search } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { formatCurrency, cn } from '../../lib/utils'
 import { supabase } from '../../lib/supabase'
@@ -492,6 +493,21 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleUpdateSerialNo = async (id: string, serialNo: number) => {
+    const res = await gatewayFetch(`/properties/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ serial_no: serialNo })
+    })
+
+    if (!res.success) {
+      toast.error(`Failed to update serial number: ${res.error || 'API Error'}`)
+    } else {
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, serial_no: serialNo } : p))
+      invalidatePlatformCache()
+      toast.success('Serial number updated successfully')
+    }
+  }
+
   const renderOverview = () => (
     <>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -799,15 +815,16 @@ export default function AdminDashboard() {
                 <th className="pb-3 font-medium">Property Name</th>
                 <th className="pb-3 font-medium">Owner</th>
                 <th className="pb-3 font-medium">Location</th>
+                <th className="pb-3 font-medium">Serial No. (Priority)</th>
                 <th className="pb-3 font-medium">Status</th>
                 <th className="pb-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loadingProps ? (
-                <tr><td colSpan={5} className="py-8 text-center text-slate-500">Loading properties...</td></tr>
+                <tr><td colSpan={6} className="py-8 text-center text-slate-500">Loading properties...</td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan={5} className="py-8 text-center text-slate-500">No properties found.</td></tr>
+                <tr><td colSpan={6} className="py-8 text-center text-slate-500">No properties found.</td></tr>
               ) : data.filter(p => 
                   p.title?.toLowerCase().includes(propSearch.toLowerCase()) || 
                   p.address?.toLowerCase().includes(propSearch.toLowerCase())
@@ -816,6 +833,19 @@ export default function AdminDashboard() {
                   <td className="py-3 font-medium text-slate-900 dark:text-white">{prop.title}</td>
                   <td className="py-3 text-slate-500">Owner ID: {prop.owner_id?.substring(0, 4) || 'Unk'}</td>
                   <td className="py-3 text-slate-500">{prop.address || 'Pune'}</td>
+                  <td className="py-3">
+                    <input 
+                      type="number"
+                      placeholder="Standard"
+                      defaultValue={prop.serial_no && prop.serial_no !== 999999 ? prop.serial_no : ''}
+                      onBlur={async (e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : 999999
+                        await handleUpdateSerialNo(prop.id, val)
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                      className="w-20 px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold focus:outline-none focus:border-brand-500 text-center"
+                    />
+                  </td>
                   <td className="py-3">
                     {prop.verified ? (
                        <span className="badge bg-emerald-50 text-emerald-600 font-bold">✓ Verified</span>

@@ -129,6 +129,7 @@ export interface Property {
   hostel_details?: any
   brokerage_applied?: boolean
   brokerage_amount?: number
+  serial_no?: number
   created_at: string
   updated_at: string
   profiles?: Profile

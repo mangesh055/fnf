@@ -119,10 +119,16 @@ export default function OwnerDashboard() {
 
   useEffect(() => {
     if (initialized) {
-      loadProperties()
+      if (profile?.role === 'admin') {
+        void loadProperties({ limit: 200 })
+      } else if (profile?.id) {
+        void loadProperties({ owner_id: profile.id, limit: 100 })
+      } else {
+        void loadProperties()
+      }
       loadVisits()
     }
-  }, [initialized, loadProperties, loadVisits])
+  }, [initialized, loadProperties, loadVisits, profile])
 
   // Automatically pre-fill owner name and phone from profile when creating a new property listing
   useEffect(() => {

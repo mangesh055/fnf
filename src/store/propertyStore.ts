@@ -5,7 +5,8 @@ import { gatewayFetch } from '../lib/apiGateway'
 interface PropertyState {
   properties: Property[]
   loading: boolean
-  loadProperties: () => Promise<void>
+  hasMore: boolean
+  loadProperties: (params?: { page?: number; limit?: number; owner_id?: string; city?: string }, append?: boolean) => Promise<boolean>
   addProperty: (property: Omit<Property, 'id' | 'rating' | 'review_count' | 'verified' | 'created_at' | 'updated_at'>) => Promise<{success: boolean, error?: string}>
   updateProperty: (id: string, updates: Partial<Property>) => Promise<{success: boolean, error?: string}>
   incrementPropertyViews: (id: string) => Promise<void>
@@ -18,15 +19,42 @@ export const usePropertyStore = create<PropertyState>()(
   (set, get) => ({
     properties: [],
     loading: false,
+    hasMore: true,
 
-    loadProperties: async () => {
+    loadProperties: async (params = {}, append = false) => {
       set({ loading: true })
-      const res = await gatewayFetch('/properties')
+      const queryParts = []
+      if (params.page) queryParts.push(`page=${params.page}`)
+      if (params.limit) queryParts.push(`limit=${params.limit}`)
+      if (params.owner_id) queryParts.push(`owner_id=${params.owner_id}`)
+      if (params.city) queryParts.push(`city=${params.city}`)
+      const queryStr = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
+
+      const res = await gatewayFetch(`/properties${queryStr}`)
       if (res.success && Array.isArray(res.data)) {
-        set({ properties: res.data as Property[], loading: false })
+        const newProps = res.data as Property[]
+        const pagination = (res as any).pagination
+        const total = pagination?.total ?? newProps.length
+
+        let combined: Property[] = []
+        if (append) {
+          combined = [...get().properties]
+          newProps.forEach(np => {
+            if (!combined.some(ep => String(ep.id) === String(np.id))) {
+              combined.push(np)
+            }
+          })
+        } else {
+          combined = newProps
+        }
+
+        const hasMore = combined.length < total
+        set({ properties: combined, loading: false, hasMore })
+        return hasMore
       } else {
         console.error('Failed to load properties from API Gateway:', res.error)
-        set({ properties: [], loading: false })
+        set({ loading: false })
+        return false
       }
     },
 

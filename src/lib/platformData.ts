@@ -34,7 +34,7 @@ export async function fetchProperties(forceRefresh = false) {
 
   if (!cache.propertiesPromise) {
     cache.propertiesPromise = (async () => {
-      const res = await gatewayFetch('/properties')
+      const res = await gatewayFetch('/properties?limit=1000')
       if (res.success && Array.isArray(res.data)) {
         cache.properties = res.data as Property[]
       } else {
@@ -55,7 +55,7 @@ export async function fetchMesses(forceRefresh = false) {
 
   if (!cache.messesPromise) {
     cache.messesPromise = (async () => {
-      const res = await gatewayFetch('/messes')
+      const res = await gatewayFetch('/messes?limit=1000')
       if (res.success && Array.isArray(res.data)) {
         cache.messes = res.data as Mess[]
       } else {

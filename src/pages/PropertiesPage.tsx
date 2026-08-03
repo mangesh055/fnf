@@ -124,33 +124,40 @@ export default function PropertiesPage() {
   const filtered = useMemo(() => {
     const fortyFiveDaysAgo = new Date()
     fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 45)
-    
-    // Filter out unapproved student property requests until admin approves them. Regular owner listings & approved posts remain visible.
+
+    // Helper: safely parse serial_no regardless of whether it came back as number or string
+    const getSerialNo = (p: any): number => {
+      const n = Number(p.serial_no)
+      return isNaN(n) ? 999999 : n
+    }
+
+    // Step 1: Filter visible properties
+    // Admin-ranked properties (serial_no < 999999) bypass age & verification filters
     let result = properties.filter(p => {
       if ((p as any).rejected === true) return false
-      const isStudentPost = (p as any).is_student_request === true || p.profiles?.role === 'student'
+      const sn = getSerialNo(p)
+      if (sn < 999999) return true  // admin-ranked: always show
+      const isStudentPost = (p as any).is_student_request === true || (p as any).profiles?.role === 'student'
       if (isStudentPost && !p.verified) return false
       if (p.created_at && !isNaN(new Date(p.created_at).getTime()) && new Date(p.created_at) < fortyFiveDaysAgo) return false
       return true
     })
-    
+
+    // Step 2: Text search
     if (search) {
       const q = search.toLowerCase()
       result = result.filter(p => {
-        const matchesDirect = (p.title || '').toLowerCase().includes(q) || 
-                              (p.address || '').toLowerCase().includes(q) || 
+        const matchesDirect = (p.title || '').toLowerCase().includes(q) ||
+                              (p.address || '').toLowerCase().includes(q) ||
                               (p.city || '').toLowerCase().includes(q) ||
                               (p.property_type || '').toLowerCase().includes(q)
         if (matchesDirect) return true
-
-        // Keyword search matching
         const isPg = q.includes('pg')
         const isHostel = q.includes('hostel')
         const isFlat = q.includes('flat')
         const isGirls = q.includes('girl') || q.includes('female')
         const isBoys = q.includes('boy') || q.includes('male')
         const isAc = q.includes('ac')
-
         let matchesKeyword = false
         if (isPg && p.property_type === 'pg') matchesKeyword = true
         if (isHostel && p.property_type === 'hostel') matchesKeyword = true
@@ -160,19 +167,14 @@ export default function PropertiesPage() {
         const rawAm = p.amenities
         const pAm = typeof rawAm === 'string' ? (() => { try { return JSON.parse(rawAm) } catch { return {} } })() : (rawAm || {})
         if (isAc && pAm.ac) matchesKeyword = true
-
-        const rentNumberMatch = q.match(/\d+/)
-        if (rentNumberMatch && matchesKeyword) {
-          const maxTarget = parseInt(rentNumberMatch[0], 10)
-          if (p.rent > maxTarget + 2000) return false
-        }
-
+        const rentMatch = q.match(/\d+/)
+        if (rentMatch && matchesKeyword && p.rent > parseInt(rentMatch[0], 10) + 2000) return false
         return matchesKeyword
       })
     }
-    if (city) {
-      result = result.filter(p => p.city.toLowerCase() === city.toLowerCase())
-    }
+
+    // Step 3: Attribute filters
+    if (city) result = result.filter(p => p.city.toLowerCase() === city.toLowerCase())
     if (selectedType) result = result.filter(p => p.property_type === selectedType)
     if (gender) result = result.filter(p => p.gender_preference === gender || p.gender_preference === 'any')
     if (minRent) result = result.filter(p => p.rent >= Number(minRent))
@@ -186,15 +188,23 @@ export default function PropertiesPage() {
         return Boolean(pAm[key])
       })
     })
-    // Split into premium (admin-assigned priority) and standard posts
-    const premiumPosts = result.filter(p => p.serial_no !== undefined && p.serial_no < 999999)
-    const standardPosts = result.filter(p => p.serial_no === undefined || p.serial_no >= 999999)
 
-    // Premium posts always sort by serial_no ascending (admin controls this — never shuffled)
-    premiumPosts.sort((a, b) => (a.serial_no ?? 999999) - (b.serial_no ?? 999999))
+    // Step 4: Split into premium (admin-ranked) and standard
+    const premiumPosts = result.filter(p => getSerialNo(p) < 999999)
+    const standardPosts = result.filter(p => getSerialNo(p) >= 999999)
 
+    // Debug: log serial numbers so you can verify in browser console
+    if (premiumPosts.length > 0) {
+      console.log('[Premium listings]', premiumPosts.map(p => ({ title: (p as any).title, serial_no: (p as any).serial_no })))
+    }
+
+    // Premium always sorted by serial_no asc — admin controls this
+    const sortedPremium = [...premiumPosts].sort((a, b) => getSerialNo(a) - getSerialNo(b))
+    const isStudent = (profile?.role || user?.role) === 'student'
+    const isOwner = (profile?.role || user?.role) === 'property_owner'
+
+    // Step 5: Sort standard posts
     let orderedStandard: typeof standardPosts
-
     if (sortBy === 'rent_low') {
       orderedStandard = [...standardPosts].sort((a, b) => a.rent - b.rent)
     } else if (sortBy === 'rent_high') {
@@ -202,28 +212,30 @@ export default function PropertiesPage() {
     } else if (sortBy === 'rating') {
       orderedStandard = [...standardPosts].sort((a, b) => b.rating - a.rating)
     } else {
-      if (profile?.role === 'student') {
-        // Students: shuffle freshly each session for fair discovery
+      if (isStudent) {
+        // Students get freshly shuffled unranked listings each session
         orderedStandard = seededShuffle(standardPosts, sessionSeed)
       } else {
-        // Owners / Admins / Guests: show newest first
-        orderedStandard = [...standardPosts].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        // Everyone else: newest first
+        orderedStandard = [...standardPosts].sort((a, b) =>
+          new Date((b as any).created_at || 0).getTime() - new Date((a as any).created_at || 0).getTime()
+        )
       }
     }
 
-    // For property owners: pin their own listings at the absolute top of the entire list
-    // (above even admin-ranked premium posts from other owners)
-    if (profile?.role === 'property_owner' && user?.id) {
-      const all = [...premiumPosts, ...orderedStandard]
-      const ownPosts = all.filter(p => String(p.owner_id) === String(user.id))
-      const otherPosts = all.filter(p => String(p.owner_id) !== String(user.id))
-      return [...ownPosts, ...otherPosts]
+    // Step 6: Role-based final ordering
+    if (isOwner && user?.id) {
+      // Property owners see their own listings first, then everyone else in premium→standard order
+      const all = [...sortedPremium, ...orderedStandard]
+      const own = all.filter(p => String((p as any).owner_id) === String(user.id))
+      const others = all.filter(p => String((p as any).owner_id) !== String(user.id))
+      return [...own, ...others]
     }
 
-    // Students: own posts float to top of standard section (above premium from others is not done for students)
-    // All other roles: no special own-post treatment
-    return [...premiumPosts, ...orderedStandard]
-  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, noBrokerageOnly, properties, user, profile])
+    // Students & everyone else: premium (ranked) → standard
+    return [...sortedPremium, ...orderedStandard]
+  }, [search, city, selectedType, gender, minRent, maxRent, sortBy, amenityFilters, availableOnly, noBrokerageOnly, properties, user, profile, sessionSeed])
+
 
   const activeFilters = [selectedType, gender, minRent, maxRent, availableOnly, noBrokerageOnly, city].filter(Boolean).length + Object.values(amenityFilters).filter(Boolean).length
 

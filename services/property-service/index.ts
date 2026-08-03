@@ -233,6 +233,43 @@ app.put('/api/properties/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Dedicated endpoint for updating serial_no (admin premium ranking)
+app.patch('/api/properties/:id/serial', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const serial_no = req.body.serial_no;
+
+    if (serial_no === undefined || serial_no === null) {
+      return res.status(400).json({ success: false, error: 'serial_no is required' });
+    }
+
+    const serialNum = Number(serial_no);
+    if (isNaN(serialNum)) {
+      return res.status(400).json({ success: false, error: 'serial_no must be a number' });
+    }
+
+    console.log(`[Serial Update] Setting property ${id} serial_no = ${serialNum}`);
+
+    const updatedProperty = await Property.findOneAndUpdate(
+      { id },
+      { $set: { serial_no: serialNum } },
+      { new: true }
+    );
+
+    if (!updatedProperty) {
+      console.error(`[Serial Update] Property not found: ${id}`);
+      return res.status(404).json({ success: false, error: 'Property not found' });
+    }
+
+    console.log(`[Serial Update] Success: ${updatedProperty.title} → serial_no = ${updatedProperty.serial_no}`);
+    res.json({ success: true, data: { id, serial_no: updatedProperty.serial_no } });
+  } catch (error: any) {
+    console.error('[Serial Update Error]:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to update serial number' });
+  }
+});
+
+
 app.delete('/api/properties/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

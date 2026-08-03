@@ -115,7 +115,21 @@ export default function HomePage() {
     const load = async () => {
       try {
         const [propertyRows, messRows] = await Promise.all([fetchProperties(), fetchMesses()])
-        setProperties((propertyRows || []).filter((p: any) => !p.rejected && (!(p.is_student_request === true || p.profiles?.role === 'student') || p.verified === true)))
+        const filteredProperties = (propertyRows || []).filter((p: any) => !p.rejected && (!(p.is_student_request === true || p.profiles?.role === 'student') || p.verified === true))
+        
+        // Sort: Premium (serial_no < 999999) sorted by serial_no ASC at top. Others sorted by created_at DESC.
+        const sortedProperties = [...filteredProperties].sort((a: any, b: any) => {
+          const aNo = Number(a.serial_no ?? 999999)
+          const bNo = Number(b.serial_no ?? 999999)
+          const aSerial = isNaN(aNo) ? 999999 : aNo
+          const bSerial = isNaN(bNo) ? 999999 : bNo
+          
+          if (aSerial < 999999 || bSerial < 999999) {
+            return aSerial - bSerial
+          }
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        })
+        setProperties(sortedProperties)
         setMesses((messRows || []).filter((m: any) => !m.rejected && m.verified === true))
         
         const propsCount = propertyRows?.length || 0

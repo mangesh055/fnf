@@ -502,17 +502,17 @@ export default function AdminDashboard() {
   }
 
   const handleUpdateSerialNo = async (id: string, serialNo: number) => {
-    const res = await gatewayFetch(`/properties/${id}`, {
-      method: 'PUT',
+    const res = await gatewayFetch(`/properties/${id}/serial`, {
+      method: 'PATCH',
       body: JSON.stringify({ serial_no: serialNo })
     })
 
     if (!res.success) {
-      toast.error(`Failed to update serial number: ${res.error || 'API Error'}`)
+      toast.error(`Failed to update ranking: ${res.error || 'API Error'}`)
     } else {
-      setProperties(prev => prev.map(p => p.id === id ? { ...p, serial_no: serialNo } : p))
+      setProperties(prev => prev.map((p: any) => p.id === id ? { ...p, serial_no: serialNo } : p))
       invalidatePlatformCache()
-      toast.success('Serial number updated successfully')
+      toast.success(serialNo === 999999 ? 'Ranking removed' : `Ranked as #${serialNo}`)
     }
   }
 
@@ -844,24 +844,14 @@ export default function AdminDashboard() {
                   <td className="py-3">
                     <input 
                       type="number"
+                      min="1"
                       placeholder="—"
-                      value={
-                        serialNoInputs[prop.id] !== undefined
-                          ? serialNoInputs[prop.id]
-                          : (prop.serial_no !== undefined && prop.serial_no !== 999999 ? String(prop.serial_no) : '')
-                      }
-                      onChange={(e) => {
-                        // Only update local input state — do NOT touch properties array here
-                        setSerialNoInputs(prev => ({ ...prev, [prop.id]: e.target.value }))
-                      }}
-                      onBlur={async () => {
-                        const raw = serialNoInputs[prop.id]
-                        // If admin didn't type anything yet, nothing to save
-                        if (raw === undefined) return
-                        const parsed = raw.trim() === '' ? 999999 : parseInt(raw, 10)
-                        const finalVal = isNaN(parsed) ? 999999 : parsed
-                        // Clear local input state
-                        setSerialNoInputs(prev => { const next = { ...prev }; delete next[prop.id]; return next })
+                      defaultValue={prop.serial_no !== undefined && prop.serial_no !== 999999 ? prop.serial_no : ''}
+                      key={`serial-${prop.id}-${prop.serial_no}`}
+                      onBlur={async (e) => {
+                        const raw = e.currentTarget.value.trim()
+                        const parsed = raw === '' ? 999999 : parseInt(raw, 10)
+                        const finalVal = isNaN(parsed) || parsed <= 0 ? 999999 : parsed
                         // Persist to DB
                         await handleUpdateSerialNo(prop.id, finalVal)
                         // Re-sort table after save so ranking is immediately visible

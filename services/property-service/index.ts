@@ -13,7 +13,7 @@ dotenv.config();
 connectDB().then(async () => {
   try {
     const result = await Property.updateMany(
-      { serial_no: { $exists: false } },
+      { $or: [{ serial_no: { $exists: false } }, { serial_no: null }] },
       { $set: { serial_no: 999999 } }
     );
     console.log(`[Database Migration]: Updated ${result.modifiedCount} properties with default serial_no.`);

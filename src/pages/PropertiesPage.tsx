@@ -163,23 +163,24 @@ export default function PropertiesPage() {
         return Boolean(pAm[key])
       })
     })
-    const premiumPosts = result.filter(p => p.serial_no !== undefined && p.serial_no < 999999)
-    const standardPosts = result.filter(p => p.serial_no === undefined || p.serial_no >= 999999)
-
-    premiumPosts.sort((a, b) => (a.serial_no ?? 999999) - (b.serial_no ?? 999999))
-
-    if (sortBy === 'rent_low') {
-      standardPosts.sort((a, b) => a.rent - b.rent)
-    } else if (sortBy === 'rent_high') {
-      standardPosts.sort((a, b) => b.rent - a.rent)
-    } else if (sortBy === 'rating') {
-      standardPosts.sort((a, b) => b.rating - a.rating)
+    let combined: any[] = []
+    if (sortBy === 'relevance') {
+      combined = [...result].sort((a, b) => properties.indexOf(a) - properties.indexOf(b))
     } else {
-      // Relevance / Default: Sort by created_at DESC
-      standardPosts.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-    }
+      const premiumPosts = result.filter(p => p.serial_no !== undefined && p.serial_no < 999999)
+      const standardPosts = result.filter(p => p.serial_no === undefined || p.serial_no >= 999999)
 
-    let combined = [...premiumPosts, ...standardPosts]
+      premiumPosts.sort((a, b) => (a.serial_no ?? 999999) - (b.serial_no ?? 999999))
+
+      if (sortBy === 'rent_low') {
+        standardPosts.sort((a, b) => a.rent - b.rent)
+      } else if (sortBy === 'rent_high') {
+        standardPosts.sort((a, b) => b.rent - a.rent)
+      } else if (sortBy === 'rating') {
+        standardPosts.sort((a, b) => b.rating - a.rating)
+      }
+      combined = [...premiumPosts, ...standardPosts]
+    }
 
     if (user?.id) {
       combined.sort((a, b) => {

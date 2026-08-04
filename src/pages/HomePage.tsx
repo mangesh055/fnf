@@ -34,7 +34,7 @@ export default function HomePage() {
   const [feedbackError, setFeedbackError] = useState('')
 
   const [avgRating, setAvgRating] = useState(4.8)
-  const [happyUsersCount, setHappyUsersCount] = useState(5000)
+  const [totalUsersCount, setTotalUsersCount] = useState(0)
 
   const loadFeedbackStats = async () => {
     try {
@@ -42,8 +42,12 @@ export default function HomePage() {
       if (fbData && fbData.length > 0) {
         const sum = fbData.reduce((acc: number, curr: any) => acc + (curr.rating || 0), 0)
         setAvgRating(Number((sum / fbData.length).toFixed(1)))
-        const positiveFeedbackCount = fbData.filter((f: any) => f.rating >= 4).length
-        setHappyUsersCount(5000 + positiveFeedbackCount)
+      }
+      
+      // Fetch actual total users from gateway
+      const countRes = await gatewayFetch('/auth/users/total') as any
+      if (countRes.success && typeof countRes.count === 'number') {
+        setTotalUsersCount(countRes.count)
       }
     } catch (err) {
       console.warn('Failed to load dynamic rating stats:', err)
@@ -580,8 +584,8 @@ export default function HomePage() {
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Average User Rating</p>
                 </div>
                 <div className="p-4 bg-brand-50 dark:bg-brand-950/20 rounded-2xl border border-brand-100 dark:border-brand-900/40">
-                  <p className="text-2xl font-black text-brand-600 dark:text-brand-400">{happyUsersCount}+</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Happy Users</p>
+                  <p className="text-2xl font-black text-brand-600 dark:text-brand-400">{totalUsersCount}+</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Total Users</p>
                 </div>
               </div>
             </div>

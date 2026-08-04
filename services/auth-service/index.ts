@@ -203,6 +203,16 @@ app.get('/api/auth/users/count', async (req: Request, res: Response) => {
   }
 });
 
+// Get total count of all users (students, owners, admins)
+app.get('/api/auth/users/total', async (req: Request, res: Response) => {
+  try {
+    const count = await User.countDocuments({});
+    res.json({ success: true, count });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Failed to count all users' });
+  }
+});
+
 // Get User Profile
 app.get('/api/auth/me', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
